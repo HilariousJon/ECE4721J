@@ -12,7 +12,8 @@
 !.gitea/workflows/
 !.gitea/workflows/push.yaml
 !.gitea/workflows/release.yaml
-
+!.gitea/PULL_REQUEST_TEMPLATE.md
+!.gitea/pull_request_template.md
 
 
 # Allow directories (needed to allow traversal into subfolders)
