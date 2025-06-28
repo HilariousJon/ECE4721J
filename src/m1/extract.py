@@ -1,5 +1,6 @@
 import os
 import h5py
+import sys
 from fastavro import reader
 
 def extract_hdf5_from_avro(avro_path, output_dir):
@@ -33,4 +34,10 @@ def extract_hdf5_from_avro(avro_path, output_dir):
             print(f"Reconstructed: {out_path}")
 
 if __name__ == "__main__":
-    extract_hdf5_from_avro("songs.avro", "output_h5")
+    if len(sys.argv) != 3:
+        print("Usage: python extract_hdf5_from_avro.py <avro_file> <output_dir>")
+        sys.exit(1)
+
+    avro_file = sys.argv[1]
+    output_dir = sys.argv[2]
+    extract_hdf5_from_avro(avro_file, output_dir)

@@ -1,2 +1,0 @@
-fastavro
-h5py
