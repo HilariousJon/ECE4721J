@@ -12,4 +12,4 @@ Write the path of the `.avro` file you want to extract into `main.py` and run it
 python3 main.py
 ```
 
-Then you will get the results in `output.json`.
+Then you will recover hdf5 files in `output_h5`.
