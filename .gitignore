@@ -34,6 +34,7 @@
 !**/*.avsc
 !**/*.txt
 !**/*.jpg
+!**/*.toml
 !**/*.r
 !**/Makefile
 !**/CMakeLists.txt
