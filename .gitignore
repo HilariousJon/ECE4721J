@@ -1,6 +1,9 @@
 # Ignore everything by default
 **
 
+# Ignore hidden folders
+**/.*/
+
 # Allow hidden conf files
 !.gitignore
 !.gitattributes
@@ -17,7 +20,6 @@
 
 
 !**/
-**/.*/
 !**/*.java
 !**/*.py
 !**/*.ipynb
