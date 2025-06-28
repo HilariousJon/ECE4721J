@@ -6,17 +6,26 @@ from fastavro.schema import load_schema, parse_schema
 
 
 def concat_files():
+    # Array that will hold all the records
+    # Each record is a dictionary with the fields defined in the schema
+    # The list of records will be written to an Avro file
     records = []
+
+    # Iterate through the directory structure and find all .h5 files
     for root, _, files in os.walk('./data/msd_subset/MillionSongSubset'):
         for f in files:
+
+            # Skip files that are not .h5
             if not f.endswith('.h5'):
                 continue
+
+            # Open the .h5 file and read the data
             path = os.path.join(root, f)
             with h5py.File(path, 'r') as h5f:
                 song_compound     = h5f['analysis/songs'][()][0]
                 metadata_compound = h5f['metadata/songs'][()][0]
                 mb_compound       = h5f['musicbrainz/songs'][()][0]
-
+                # Create a record dictionary with the fields defined in the schema
                 rec = {
                     'track_id': song_compound['track_id'].decode(),
 
@@ -75,15 +84,22 @@ def concat_files():
                         'year':               int(mb_compound['year']),
                     }
                 }
+
+                # Append the record to the list of records
                 records.append(rec)
     return records
 
 if __name__ == "__main__":
     try:
+        # Concatenate all the .h5 files into a single list of records
         records = concat_files()
         schema = parse_schema(load_schema('Song.avsc'))
         out_path = 'output/songs.snappy.avro'  
         
+        # Ensure the output directory exists
+        os.makedirs('output', exist_ok=True)
+
+        # Write the records to an Avro file with Snappy compression
         with open(out_path, 'wb') as fo:
             fastavro.writer(fo, schema, records, codec='snappy')
 
