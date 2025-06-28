@@ -17,12 +17,12 @@
 
 
 !**/
+**/.*/
 !**/*.java
 !**/*.py
 !**/*.ipynb
 !**/*.scala
 !**/*.xml
-!**/*.jar
 !**/*.json
 !**/*.sh
 !**/*.sql
@@ -34,5 +34,4 @@
 !**/Makefile
 !**/CMakeLists.txt
 !**/*.md
-!**/.gitignore
 
