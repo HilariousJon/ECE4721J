@@ -1,7 +1,12 @@
 # Ignore everything by default
 **
 
+# Ignore hidden folders
+**/.*/
+
 # Allow hidden conf files
+!.git/
+!.git/**/*
 !.gitignore
 !.gitattributes
 !.gitea/
@@ -22,7 +27,6 @@
 !**/*.ipynb
 !**/*.scala
 !**/*.xml
-!**/*.jar
 !**/*.json
 !**/*.sh
 !**/*.sql
@@ -34,5 +38,4 @@
 !**/Makefile
 !**/CMakeLists.txt
 !**/*.md
-!**/.gitignore
 
