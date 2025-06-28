@@ -16,19 +16,23 @@
 !.gitea/pull_request_template.md
 
 
-# Allow directories (needed to allow traversal into subfolders)
-!*/
-
-# Allow only specific file types recursively
-!**/*.json
+!**/
 !**/*.java
 !**/*.py
 !**/*.ipynb
 !**/*.scala
-!**/*.r
 !**/*.xml
 !**/*.jar
+!**/*.json
 !**/*.sh
+!**/*.sql
+!**/*.parquet
+!**/*.avsc
+!**/*.txt
 !**/*.jpg
+!**/*.r
+!**/Makefile
+!**/CMakeLists.txt
 !**/*.md
+!**/.gitignore
 
