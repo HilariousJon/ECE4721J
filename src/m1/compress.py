@@ -82,10 +82,10 @@ if __name__ == "__main__":
     try:
         records = concat_files()
         schema = parse_schema(load_schema('Song.avsc'))
-        out_path = 'output/songs.avro'  
+        out_path = 'output/songs.snappy.avro'  
         
         with open(out_path, 'wb') as fo:
-            fastavro.writer(fo, schema, records, codec='null')
+            fastavro.writer(fo, schema, records, codec='snappy')
 
     except Exception as error:
         print(error)
