@@ -5,6 +5,8 @@
 **/.*/
 
 # Allow hidden conf files
+!.git/
+!.git/**/*
 !.gitignore
 !.gitattributes
 !.gitea/
