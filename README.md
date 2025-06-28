@@ -17,4 +17,4 @@ Team Members:
 
 - Define Avro schema.
 - Compact many small `h5` files into a large file by Avro.
-- Extract `h5` files.
+- Extract an Avro file to many `h5` files.
