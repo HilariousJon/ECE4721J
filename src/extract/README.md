@@ -11,3 +11,5 @@ Write the path of the `.avro` file you want to extract into `main.py` and run it
 ```python
 python3 main.py
 ```
+
+Then you will get the results in `output.json`.
