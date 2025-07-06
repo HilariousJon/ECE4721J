@@ -95,7 +95,7 @@ if __name__ == "__main__":
         records = concat_files()
         schema = parse_schema(load_schema('Song.avsc'))
         out_path = 'output/songs.snappy.avro'  
-        
+
         # Ensure the output directory exists
         os.makedirs('output', exist_ok=True)
 
