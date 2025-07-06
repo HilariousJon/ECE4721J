@@ -23,7 +23,7 @@ extract:
 
 commit:
 	git add -A; \
-	git commit -m "chore(p1m1): auto backup [build joj]" --allow-empty && git push
+	git commit -m "chore(p1m2): auto backup [build joj]" --allow-empty && git push
 
 fmt_json:
 	cat src/m1/msd.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd.avsc

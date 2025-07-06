@@ -38,8 +38,8 @@ from hdf5_getters import *
 try:
     from MBrainzDB import query as QUERYMB
 except ImportError:
-    print 'need pg module and MBrainzDB folder of Python source code if you'
-    print 'want to use musicbrainz related functions, e.g. fill_hdf5_from_musicbrainz'
+    print ('need pg module and MBrainzDB folder of Python source code if you')
+    print ('want to use musicbrainz related functions, e.g. fill_hdf5_from_musicbrainz')
 
 
 # description of the different arrays in the song file
@@ -534,11 +534,11 @@ def open_h5_file_append(h5filename):
 
 def die_with_usage():
     """ HELP MENU """
-    print 'hdf5_utils.py'
-    print 'by T. Bertin-Mahieux (2010) Columbia University'
-    print ''
-    print 'should be used as a library, contains functions to create'
-    print 'HDF5 files for the Million Song Dataset project'
+    print ('hdf5_utils.py')
+    print ('by T. Bertin-Mahieux (2010) Columbia University')
+    print ('')
+    print ('should be used as a library, contains functions to create')
+    print ('HDF5 files for the Million Song Dataset project')
     sys.exit(0)
 
 

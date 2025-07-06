@@ -36,26 +36,26 @@ import utils
 
 def die_with_usage():
     """ HELP MENU """
-    print 'create_aggregate_file.py'
-    print '   by T. Bertin-Mahieux (2011) Columbia University'
-    print '   tb2332@columbia.edu'
-    print ''
-    print 'Creates an aggregate file from all song file (h5 files)'
-    print 'in a given directory.'
-    print 'Aggregate files contains many songs. and none of the arrays,'
-    print ''
-    print 'usage:'
-    print '   python create_aggregate_file.py <H5 DIR> <OUTPUT.h5>'
-    print 'PARAMS'
-    print '   H5 DIR     - directory contains h5 files (subdirs are checked)'
-    print '   OUTPUT.h5  - filename of the aggregate file to create'
+    print('create_aggregate_file.py')
+    print('   by T. Bertin-Mahieux (2011) Columbia University')
+    print('   tb2332@columbia.edu')
+    print('')
+    print('Creates an aggregate file from all song file (h5 files)')
+    print('in a given directory.')
+    print('Aggregate files contains many songs. and none of the arrays,')
+    print('')
+    print('usage:')
+    print('   python create_aggregate_file.py <H5 DIR> <OUTPUT.h5>')
+    print('PARAMS')
+    print('   H5 DIR     - directory contains h5 files (subdirs are checked)')
+    print('   OUTPUT.h5  - filename of the aggregate file to create')
     sys.exit(0)
 
 
 if __name__ == '__main__':
 
     # help menu
-    if len(sys.argv)<3:
+    if len(sys.argv) < 3:
         die_with_usage()
 
     # params
@@ -64,30 +64,29 @@ if __name__ == '__main__':
 
     # sanity checks
     if not os.path.isdir(maindir):
-        print 'ERROR: directory',maindir,'does not exists.'
+        print('ERROR: directory', maindir, 'does not exists.')
         sys.exit(0)
     if os.path.isfile(output):
-        print 'ERROR: file',output,'exists, delete or provide a new filename.'
+        print('ERROR: file', output, 'exists, delete or provide a new filename.')
         sys.exit(0)
 
     # start time
     t1 = time.time()
 
     # get all h5 files
-    allh5 = utils.get_all_files(maindir,ext='.h5')
-    print 'found',len(allh5),'H5 files.'
+    allh5 = utils.get_all_files(maindir, ext='.h5')
+    print('found', len(allh5), 'H5 files.')
 
     # create aggregate file
-    HDF5.create_aggregate_file(output,expectedrows=len(allh5),
+    HDF5.create_aggregate_file(output, expectedrows=len(allh5),
                                summaryfile=False)
-    print 'Aggregate file created, we start filling it.'
+    print('Aggregate file created, we start filling it.')
 
     # fill it
     h5 = HDF5.open_h5_file_append(output)
-    HDF5.fill_hdf5_aggregate_file(h5,allh5,summaryfile=False)
+    HDF5.fill_hdf5_aggregate_file(h5, allh5, summaryfile=False)
     h5.close()
 
     # done!
     stimelength = str(datetime.timedelta(seconds=time.time()-t1))
-    print 'Aggregated',len(allh5),'files in:',stimelength
-    
+    print('Aggregated', len(allh5), 'files in:', stimelength)
