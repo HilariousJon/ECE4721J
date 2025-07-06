@@ -1,0 +1,156 @@
+{
+  "namespace": "msd.avsc",
+  "type": "record",
+  "name": "MSD",
+  "doc": "A comprehensive schema for MSD songs, tailored for ECE472 Project 1, including detailed features for advanced analysis.",
+  "fields": [
+    {
+      "name": "song_id",
+      "type": "string",
+      "doc": "Unique identifier for the song (Echo Nest ID)."
+    },
+    {
+      "name": "track_id",
+      "type": "string",
+      "doc": "Unique identifier for the track (MSD ID)."
+    },
+    {
+      "name": "title",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "Title of the song."
+    },
+    {
+      "name": "release",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "The album/release name of the song."
+    },
+    {
+      "name": "artist_id",
+      "type": "string",
+      "doc": "Unique identifier for the artist."
+    },
+    {
+      "name": "artist_name",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "Name of the artist/band."
+    },
+    {
+      "name": "artist_location",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "Reported location of the artist."
+    },
+    {
+      "name": "artist_latitude",
+      "type": [
+        "null",
+        "double"
+      ],
+      "doc": "Latitude of the artist's location."
+    },
+    {
+      "name": "artist_longitude",
+      "type": [
+        "null",
+        "double"
+      ],
+      "doc": "Longitude of the artist's location."
+    },
+    {
+      "name": "year",
+      "type": "int",
+      "doc": "Release year of the song. Note: 0 if year is unknown."
+    },
+    {
+      "name": "duration",
+      "type": "double",
+      "doc": "Duration of the song in seconds."
+    },
+    {
+      "name": "loudness",
+      "type": "double",
+      "doc": "Overall loudness in dB."
+    },
+    {
+      "name": "tempo",
+      "type": "double",
+      "doc": "Overall tempo in BPM."
+    },
+    {
+      "name": "energy",
+      "type": "double",
+      "doc": "Perceptual measure of intensity and activity (0.0 to 1.0)."
+    },
+    {
+      "name": "danceability",
+      "type": "double",
+      "doc": "How suitable a track is for dancing (0.0 to 1.0)."
+    },
+    {
+      "name": "key",
+      "type": "int",
+      "doc": "The key the track is in (0=C, 1=C#, etc.)."
+    },
+    {
+      "name": "mode",
+      "type": "int",
+      "doc": "Modality of a track (major=1, minor=0)."
+    },
+    {
+      "name": "time_signature",
+      "type": "int",
+      "doc": "Number of beats per bar."
+    },
+    {
+      "name": "song_hotttnesss",
+      "type": [
+        "null",
+        "double"
+      ],
+      "doc": "Popularity measure of the song."
+    },
+    {
+      "name": "artist_hotttnesss",
+      "type": [
+        "null",
+        "double"
+      ],
+      "doc": "Popularity measure of the artist."
+    },
+    {
+      "name": "artist_familiarity",
+      "type": [
+        "null",
+        "double"
+      ],
+      "doc": "Familiarity measure of the artist."
+    },
+    {
+      "name": "similar_artists",
+      "type": {
+        "type": "array",
+        "items": "string"
+      },
+      "doc": "Array of similar artist IDs for graph analysis."
+    },
+    {
+      "name": "artist_terms",
+      "type": {
+        "type": "array",
+        "items": "string"
+      },
+      "doc": "Array of genre/style tags for the artist. ML preparation"
+    }
+  ]
+}
