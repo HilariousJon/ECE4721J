@@ -18,3 +18,6 @@ Team Members:
 - Define Avro schema.
 - Compact many small `h5` files into a large file by Avro.
 - Extract an Avro file to many `h5` files.
+- Reference: [MSongsDB](https://github.com/tbertinmahieux/MSongsDB)
+
+## Milestone 2
