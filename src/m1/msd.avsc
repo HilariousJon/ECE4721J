@@ -1,5 +1,5 @@
 {
-  "namespace": "msd.avsc",
+  "namespace": "msd.avro",
   "type": "record",
   "name": "MSD",
   "doc": "A comprehensive schema for MSD songs, tailored for ECE472 Project 1, including detailed features for advanced analysis.",

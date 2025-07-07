@@ -3,10 +3,11 @@ import h5py
 import sys
 from fastavro import reader
 
+
 def extract_hdf5_from_avro(avro_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
-    with open(avro_path, 'rb') as f:
+    with open(avro_path, "rb") as f:
         avro_reader = reader(f)
 
         for record in avro_reader:
@@ -16,7 +17,7 @@ def extract_hdf5_from_avro(avro_path, output_dir):
 
             out_path = os.path.join(output_dir, f"{track_id}.h5")
 
-            with h5py.File(out_path, 'w') as h5f:
+            with h5py.File(out_path, "w") as h5f:
                 grp_analysis = h5f.create_group("analysis")
                 for key, val in analysis.items():
                     if isinstance(val, list):
@@ -32,6 +33,7 @@ def extract_hdf5_from_avro(avro_path, output_dir):
                         grp_metadata.attrs[key] = val
 
             print(f"Reconstructed: {out_path}")
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
