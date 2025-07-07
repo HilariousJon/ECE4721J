@@ -12,6 +12,7 @@ init_env:
 	poetry install && poetry update
 
 aggregate_avro:
+	mkdir -p ./data
 	poetry run spark-submit \
 		--master local[12] \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
