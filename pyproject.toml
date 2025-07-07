@@ -7,7 +7,7 @@ license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "pyspark=3.2.4",
+    "pyspark==3.2.4",
     "fastavro>=1.4.11",
     "h5py>3.7.0",
     "avro>=1.10.2",
