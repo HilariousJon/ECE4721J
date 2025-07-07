@@ -2,17 +2,18 @@
 name = "ece4721-project1"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "jon-lee",email = "jon-lee@sjtu.edu.cn"}
-]
-license = {text = "MIT"}
+authors = [{ name = "jon-lee", email = "jon-lee@sjtu.edu.cn" }]
+license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "pyspark>=3.2.4",
     "fastavro>=1.4.11",
     "h5py>3.7.0",
-    "avro>=1.10.2"
+    "avro>=1.10.2",
+    "tqdm=*",
+    "tables=*",
+    "loguru=*",
 ]
 
 

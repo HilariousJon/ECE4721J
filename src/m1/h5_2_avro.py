@@ -1,12 +1,11 @@
 import fastavro
-import h5py
 import os
 import argparse
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from tqdm import tqdm
 from pyspark import SparkContext
-from avro.datafile import DataFileReader, DataFileWriter
-from avro.io import DatumReader, DatumWriter
+from avro.datafile import DataFileWriter
+from avro.io import DatumWriter
 import avro.schema as avroschema
 from loguru import logger as logger
 import hdf5_getters
@@ -69,8 +68,23 @@ def parser() -> List[str]:
     return [args.schema, args.hdf5, args.avro]
 
 
-def merge_avro_files() -> None:
-    return
+def merge_avro_files(hdf5_path: str, avro_folder: str) -> Tuple[Any, List[Any]]:
+    results: List[Any] = []
+    schema: Any = None
+    for letter in tqdm(
+        os.listdir(hdf5_path), desc="Reading Avro files", unit="file", leave=False
+    ):
+        avro_file_path = avro_folder + f"/{letter}.avro"
+        with open(avro_file_path, "rb") as avro_f:
+            reader = fastavro.reader(avro_f)
+            records = list(reader)
+            if results:
+                results.extend(records)
+            else:
+                results = records
+                schema = reader.schema
+    return schema, results
+
 
 def get_field_type(field: Any) -> str:
     if "string" in field.type:
@@ -83,13 +97,14 @@ def get_field_type(field: Any) -> str:
         logger.warning(f"Unknown field type: {field.type} for field {field.name}")
         raise Exception(f"Unknown field type: {field.type} for field {field.name}")
 
+
 def extract_hdf5_data(h5file: str, schema: Any) -> Dict[str, Any]:
     hdf5 = hdf5_getters.open_h5_file_read(h5file)
     fields = schema.fields
     song_record: Dict[str, Any] = {}
     # commented out the following loop when can runnig smoothly for the first time
     for field in fields:
-        current_getter = 'get_' + field.name
+        current_getter = "get_" + field.name
         if not hasattr(hdf5_getters, current_getter):
             logger.warning(
                 f"Field {field.name} in avro files does not have a corresponding getter in hdf5_getters."
@@ -139,7 +154,9 @@ def aggregate_hdf5_to_avro(
             record: Dict[str, Any] = extract_hdf5_data(h5file, schema)
             if record:
                 writer.append(record)
-    logger.info(f"Finished processing {letter} files. Output written to {avro_file_path}")
+    logger.info(
+        f"Finished processing {letter} files. Output written to {avro_file_path}"
+    )
     writer.close()
     return
 
@@ -148,10 +165,28 @@ if __name__ == "__main__":
     parse_results: List[str] = parser()
     sc = SparkContext()
     logger.info("Starting conversion from HDF5 to Avro")
-    result_rdd = (
-        sc.parallelize(os.listdir(parse_results[1])).map(
-            lambda fname: aggregate_hdf5_to_avro(
-                parse_results[0], parse_results[1], parse_results[2], fname
+    try:
+        result_rdd = (
+            sc.parallelize(os.listdir(parse_results[1])).map(
+                lambda fname: aggregate_hdf5_to_avro(
+                    parse_results[0], parse_results[1], parse_results[2], fname
+                )
+            )
+        ).collect()
+        logger.info("All files processed successfully.")
+        merged_schema, merged_results = merge_avro_files(
+            parse_results[1], parse_results[2]
+        )
+        with open(os.path.join(parse_results[2], "aggregate.avro"), "wb") as f:
+            fastavro.write(f, merged_schema, merged_results)
+        logger.info(
+            "Aggregate Avro file created successfully at {}".format(
+                os.path.join(parse_results[2], "aggregate.avro")
             )
         )
-    ).collect()
+    except Exception as e:
+        logger.error(f"Error during conversion: {e}")
+        sc.stop()
+        exit(1)
+    logger.info("Conversion completed successfully.")
+    sc.stop()
