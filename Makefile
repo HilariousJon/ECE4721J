@@ -6,7 +6,19 @@ OUTPUT_DIR ?= src/m1/output_h5
 main:
 	$(PYTHON) src/m1/compress.py 
 
+init_env:
+	# make sure you are in a virtual environment
+	pip install poetry
+	poetry install && poetry update
+
+aggregate_avro:
+	python src/m1/h5_to_avro.py \
+		-s src/m1/msd.avsc \ 
+		-o ./data/ \
+		-i /mnt/msd_data/data
+
 mount_data_init:
+	# run it every time you reset your computer
 	sudo mkdir -p /mnt/msd_data /home/hadoopuser/ece472
 	sudo sshfs /home/hadoopuser/ece472 -o allow_other \
 		-o Port=2223 ece472@focs.ji.sjtu.edu.cn: \
@@ -19,6 +31,7 @@ unmount_data:
 	sudo umount /home/hadoopuser/ece472
 
 extract:
+	# use API from display_song later
 	$(PYTHON) src/m1/extract.py $(AVRO_FILE) $(OUTPUT_DIR)
 
 commit:
@@ -28,4 +41,4 @@ commit:
 fmt_json:
 	cat src/m1/msd.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd.avsc
 
-.PHONY: commit main extract mount_data_init fmt_json
+.PHONY: commit main extract mount_data_init fmt_json init_env
