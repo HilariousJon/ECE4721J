@@ -1,17 +1,25 @@
 [project]
-name = "ece4721-project"
+name = "ece4721-project1"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "jon-lee",email = "jon-lee@sjtu.edu.cn"}
-]
-license = {text = "MIT"}
+authors = [{ name = "jon-lee", email = "jon-lee@sjtu.edu.cn" }]
+license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "pyspark==3.2.4",
+    "fastavro>=1.4.11",
+    "h5py>3.7.0",
+    "avro>=1.10.2",
+    "tqdm>=4.66.4",
+    "tables>=3.9.2",
+    "loguru>=0.7.2",
 ]
 
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode=false
