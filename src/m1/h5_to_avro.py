@@ -148,7 +148,7 @@ def aggregate_hdf5_to_avro(
     with DataFileWriter(
         open(avro_file_path, "wb"),
         DatumWriter(),
-        schema=schema,
+        schema,
     ) as writer:
         for h5file in h5files:
             record: Dict[str, Any] = extract_hdf5_data(h5file, schema)
