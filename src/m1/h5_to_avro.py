@@ -87,15 +87,33 @@ def merge_avro_files(hdf5_path: str, avro_folder: str) -> Tuple[Any, List[Any]]:
 
 
 def get_field_type(field: Any) -> str:
-    if "string" in field.type:
-        return "str"
-    elif "int" in field.type:
-        return "int"
-    elif "double" in field.type:
-        return "double"
+    base_type = None
+
+    if isinstance(field.type, list):
+        for t in field.type:
+            if t != "null":
+                base_type = t
+                break
+    elif hasattr(field.type, "type"):
+        base_type = field.type.type
     else:
-        logger.warning(f"Unknown field type: {field.type} for field {field.name}")
-        raise Exception(f"Unknown field type: {field.type} for field {field.name}")
+        base_type = field.type
+
+    base_type = str(base_type).lower()
+
+    if base_type == "string":
+        return "str"
+    elif base_type == "int":
+        return "int"
+    elif base_type == "double":
+        return "float"
+    else:
+        logger.warning(
+            f"Unknown or unsupported field type: {base_type} for field {field.name}"
+        )
+        raise Exception(
+            f"Unknown or unsupported field type: {base_type} for field {field.name}"
+        )
 
 
 def extract_hdf5_data(h5file: str, schema: Any) -> Dict[str, Any]:
