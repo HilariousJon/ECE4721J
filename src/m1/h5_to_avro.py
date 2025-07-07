@@ -1,5 +1,6 @@
 import fastavro
 import os
+import sys
 import argparse
 from typing import List, Dict, Any, Tuple
 from tqdm import tqdm
@@ -7,8 +8,19 @@ from pyspark import SparkContext
 from avro.datafile import DataFileWriter
 from avro.io import DatumWriter
 import avro.schema as avroschema
+from avro.schema import UnionSchema, PrimitiveSchema
 from loguru import logger as logger
 import hdf5_getters
+
+logger.remove()
+logger.add(
+    sys.stderr,
+    colorize=True,
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+    "<level>{level: <8}</level> | "
+    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+    "<level>{message}</level>",
+)
 
 
 def parser() -> List[str]:
@@ -87,25 +99,34 @@ def merge_avro_files(hdf5_path: str, avro_folder: str) -> Tuple[Any, List[Any]]:
 
 
 def get_field_type(field: Any) -> str:
+
     base_type = None
 
+    # fastavro style: field.type is the intended list
     if isinstance(field.type, list):
         for t in field.type:
-            if t != "null":
+            if str(t).lower() != "null":
                 base_type = t
                 break
-    elif hasattr(field.type, "type"):
+    # Apache Avro UnionSchema
+    elif isinstance(field.type, UnionSchema):
+        for option in field.type.schemas:
+            if isinstance(option, PrimitiveSchema):
+                base_type = option.type
+                break
+    # PrimitiveSchema
+    elif isinstance(field.type, PrimitiveSchema):
         base_type = field.type.type
     else:
-        base_type = field.type
+        base_type = str(field.type)
 
     base_type = str(base_type).lower()
 
     if base_type == "string":
         return "str"
-    elif base_type == "int":
+    elif base_type in ("int", "long"):
         return "int"
-    elif base_type == "double":
+    elif base_type in ("float", "double"):
         return "float"
     else:
         logger.warning(
