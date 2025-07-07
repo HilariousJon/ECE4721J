@@ -2,11 +2,12 @@ import fastavro
 import h5py
 import os
 import argparse
-from typing import List
+from typing import List, Dict, Any
 from tqdm import tqdm
 from pyspark import SparkContext
 from avro.datafile import DataFileReader, DataFileWriter
 from avro.io import DatumReader, DatumWriter
+import avro.schema as avroschema
 from loguru import logger as logger
 import hdf5_getters
 
@@ -29,7 +30,8 @@ def parser() -> List[str]:
         type=str,
         required=True,
         dest="avro",
-        help="output path for the aggregate avro files",
+        help="""output folder path for the aggregate avro files.
+        Final results will be in /path/to/your/output/aggregate.avro""",
     )
     parsers.add_argument(
         "-s",
@@ -70,20 +72,86 @@ def parser() -> List[str]:
 def merge_avro_files() -> None:
     return
 
+def get_field_type(field: Any) -> str:
+    if "string" in field.type:
+        return "str"
+    elif "int" in field.type:
+        return "int"
+    elif "double" in field.type:
+        return "double"
+    else:
+        logger.warning(f"Unknown field type: {field.type} for field {field.name}")
+        raise Exception(f"Unknown field type: {field.type} for field {field.name}")
 
-def extract_hdf5_data() -> None:
-    return
+def extract_hdf5_data(h5file: str, schema: Any) -> Dict[str, Any]:
+    hdf5 = hdf5_getters.open_h5_file_read(h5file)
+    fields = schema.fields
+    song_record: Dict[str, Any] = {}
+    # commented out the following loop when can runnig smoothly for the first time
+    for field in fields:
+        current_getter = 'get_' + field.name
+        if not hasattr(hdf5_getters, current_getter):
+            logger.warning(
+                f"Field {field.name} in avro files does not have a corresponding getter in hdf5_getters."
+            )
+            continue
+        else:
+            try:
+                value = getattr(hdf5_getters, current_getter)(hdf5)
+                type_ = get_field_type(field)
+                if type_ == "str":
+                    song_record[field.name] = str(value)
+                elif type_ == "int":
+                    song_record[field.name] = int(value)
+                elif type_ == "double":
+                    song_record[field.name] = float(value)
+                else:
+                    song_record[field.name] = value
+                    logger.debug(f"Extracted {field.name}: {song_record[field.name]}")
+            except Exception as e:
+                logger.error(f"Error processing field {field.name}: {e}")
+                continue
+    return song_record
 
 
-def aggregate_hdf5_to_avro() -> None:
+def find_all_h5_files(folder_path: str) -> List[str]:
+    return [
+        os.path.join(root, h5file)
+        for root, _, files in os.walk(folder_path)
+        for h5file in files
+        if h5file.endswith(".h5") or h5file.endswith(".hdf5")
+    ]
+
+
+def aggregate_hdf5_to_avro(
+    schema_path: str, hdf5_path: str, avro_path: str, letter: str
+) -> None:
+    schema = avroschema.parse(open(schema_path, "rb").read())
+    folder_path = os.path.join(hdf5_path, letter)
+    avro_file_path = os.path.join(avro_path, f"{letter}.avro")
+    h5files: List[str] = find_all_h5_files(folder_path)
+    with DataFileWriter(
+        open(avro_file_path, "wb"),
+        DatumWriter(),
+        schema=schema,
+    ) as writer:
+        for h5file in h5files:
+            record: Dict[str, Any] = extract_hdf5_data(h5file, schema)
+            if record:
+                writer.append(record)
+    logger.info(f"Finished processing {letter} files. Output written to {avro_file_path}")
+    writer.close()
     return
 
 
 if __name__ == "__main__":
     parse_results: List[str] = parser()
-    schema_path:str = parse_results[0]
-    hdf5_path:str = parse_results[1]
-    avro_path:str = parse_results[2]
     sc = SparkContext()
     logger.info("Starting conversion from HDF5 to Avro")
-    
+    result_rdd = (
+        sc.parallelize(os.listdir(parse_results[1])).map(
+            lambda fname: aggregate_hdf5_to_avro(
+                parse_results[0], parse_results[1], parse_results[2], fname
+            )
+        )
+    ).collect()

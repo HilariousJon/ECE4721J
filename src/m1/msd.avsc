@@ -135,22 +135,6 @@
         "double"
       ],
       "doc": "Familiarity measure of the artist."
-    },
-    {
-      "name": "similar_artists",
-      "type": {
-        "type": "array",
-        "items": "string"
-      },
-      "doc": "Array of similar artist IDs for graph analysis."
-    },
-    {
-      "name": "artist_terms",
-      "type": {
-        "type": "array",
-        "items": "string"
-      },
-      "doc": "Array of genre/style tags for the artist. ML preparation"
     }
   ]
 }
