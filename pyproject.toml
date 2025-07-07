@@ -11,9 +11,9 @@ dependencies = [
     "fastavro>=1.4.11",
     "h5py>3.7.0",
     "avro>=1.10.2",
-    "tqdm=*",
-    "tables=*",
-    "loguru=*",
+    "tqdm>=4.66.4",
+    "tables>=3.9.2",
+    "loguru>=0.7.2",
 ]
 
 
