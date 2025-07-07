@@ -13,7 +13,7 @@ init_env:
 
 aggregate_avro:
 	python src/m1/h5_to_avro.py \
-		-s src/m1/msd.avsc \ 
+		-s src/m1/msd.avsc \
 		-o ./data/ \
 		-i /mnt/msd_data/data
 
