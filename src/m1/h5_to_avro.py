@@ -108,12 +108,16 @@ def get_field_type(field: Any) -> str:
             if str(t).lower() != "null":
                 base_type = t
                 break
+        if base_type is None:
+            return None
     # Apache Avro UnionSchema
     elif isinstance(field.type, UnionSchema):
         for option in field.type.schemas:
             if isinstance(option, PrimitiveSchema):
                 base_type = option.type
                 break
+        if base_type is None:
+            return None
     # PrimitiveSchema
     elif isinstance(field.type, PrimitiveSchema):
         base_type = field.type.type
@@ -160,6 +164,7 @@ def extract_hdf5_data(h5file: str, schema: Any) -> Dict[str, Any]:
                 elif type_ == "double":
                     song_record[field.name] = float(value)
                 else:
+                    # should be the none type here
                     song_record[field.name] = value
                     logger.debug(f"Extracted {field.name}: {song_record[field.name]}")
             except Exception as e:
