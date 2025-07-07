@@ -98,7 +98,7 @@ def merge_avro_files(hdf5_path: str, avro_folder: str) -> Tuple[Any, List[Any]]:
     return schema, results
 
 
-def get_field_type(field: Any) -> str:
+def get_field_type(field: Any) -> str | None:
 
     base_type = None
 
@@ -133,12 +133,7 @@ def get_field_type(field: Any) -> str:
     elif base_type in ("float", "double"):
         return "float"
     else:
-        logger.warning(
-            f"Unknown or unsupported field type: {base_type} for field {field.name}"
-        )
-        raise Exception(
-            f"Unknown or unsupported field type: {base_type} for field {field.name}"
-        )
+        return None
 
 
 def extract_hdf5_data(h5file: str, schema: Any) -> Dict[str, Any]:
@@ -161,7 +156,7 @@ def extract_hdf5_data(h5file: str, schema: Any) -> Dict[str, Any]:
                     song_record[field.name] = str(value)
                 elif type_ == "int":
                     song_record[field.name] = int(value)
-                elif type_ == "double":
+                elif type_ == "float":
                     song_record[field.name] = float(value)
                 else:
                     # should be the none type here

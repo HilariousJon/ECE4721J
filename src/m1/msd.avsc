@@ -17,16 +17,16 @@
     {
       "name": "title",
       "type": [
-        "null",
-        "string"
+        "string",
+        "null"
       ],
       "doc": "Title of the song."
     },
     {
       "name": "release",
       "type": [
-        "null",
-        "string"
+        "string",
+        "null"
       ],
       "doc": "The album/release name of the song."
     },
@@ -38,32 +38,32 @@
     {
       "name": "artist_name",
       "type": [
-        "null",
-        "string"
+        "string",
+        "null"
       ],
       "doc": "Name of the artist/band."
     },
     {
       "name": "artist_location",
       "type": [
-        "null",
-        "string"
+        "string",
+        "null"
       ],
       "doc": "Reported location of the artist."
     },
     {
       "name": "artist_latitude",
       "type": [
-        "null",
-        "double"
+        "double",
+        "null"
       ],
       "doc": "Latitude of the artist's location."
     },
     {
       "name": "artist_longitude",
       "type": [
-        "null",
-        "double"
+        "double",
+        "null"
       ],
       "doc": "Longitude of the artist's location."
     },
@@ -115,24 +115,24 @@
     {
       "name": "song_hotttnesss",
       "type": [
-        "null",
-        "double"
+        "double",
+        "null"
       ],
       "doc": "Popularity measure of the song."
     },
     {
       "name": "artist_hotttnesss",
       "type": [
-        "null",
-        "double"
+        "double",
+        "null"
       ],
       "doc": "Popularity measure of the artist."
     },
     {
       "name": "artist_familiarity",
       "type": [
-        "null",
-        "double"
+        "double",
+        "null"
       ],
       "doc": "Familiarity measure of the artist."
     }
