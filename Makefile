@@ -12,7 +12,17 @@ init_env:
 	poetry install && poetry update
 
 aggregate_avro:
-	python src/m1/h5_to_avro.py \
+	poetry run spark-submit \
+		--master local[12] \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		--driver-cores 2 \
+		--driver-memory 8g \
+		--executor-cores 4 \
+		--num-executors 10 \
+		--executor-memory 4g \
+		--py-files src/m1/hdf5_getters.py \
+		src/m1/h5_to_avro.py \
 		-s src/m1/msd.avsc \
 		-o ./data/ \
 		-i /mnt/msd_data/data
