@@ -45,6 +45,10 @@ extract:
 	# use API from display_song later
 	$(PYTHON) src/m1/extract.py $(AVRO_FILE) $(OUTPUT_DIR)
 
+artists_dis_spark:
+	# run the spark job to find the distance between two artists
+	poetry run $(PYTHON) src/m2/artistsDis/spark/main.py
+
 commit:
 	git add -A; \
 	git commit -m "chore(p1m2): auto backup [build joj]" --allow-empty && git push

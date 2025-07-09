@@ -33,3 +33,8 @@ make aggregate_avro
 ```bash
 make extract
 ```
+
+- Run the spark job to find the distance between two artists:
+```bash
+make artists_dis_spark
+```
