@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import fastavro
 import os
 import sys
@@ -10,93 +11,41 @@ import avro.schema as avroschema
 from avro.schema import UnionSchema, PrimitiveSchema
 from loguru import logger
 import hdf5_getters
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger.remove()
 logger.add(
     sys.stderr,
     colorize=True,
     format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-    "<level>{level: <8}</level> | "
-    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-    "<level>{message}</level>",
+           "<level>{level: <8}</level> | "
+           "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+           "<level>{message}</level>",
 )
 
-
-def parser() -> List[str]:
-    parsers = argparse.ArgumentParser(
-        description="Convert MSD HDF5 files to more concise avro file"
-    )
-    parsers.add_argument(
-        "-i",
-        "--input",
-        type=str,
-        required=True,
-        dest="hdf5",
-        help="Directory containing the source data of MSongDataset",
-    )
-    parsers.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        required=True,
-        dest="avro",
-        help="""Output folder path for the aggregate avro files.
-        Final result will be in /path/to/output/aggregate.avro""",
-    )
-    parsers.add_argument(
-        "-s",
-        "--schema",
-        type=str,
-        required=True,
-        dest="schema",
-        help="Path to the Avro schema file (.json or .avsc)",
-    )
-    args = parsers.parse_args()
-
-    if args.schema and args.hdf5 and args.avro:
-        logger.info(f"Schema: {args.schema}\nInput: {args.hdf5}\nOutput: {args.avro}\n")
-    else:
-        logger.error("Missing required arguments.")
-        parsers.print_help()
-        exit(1)
-
-    if not os.path.exists(args.hdf5):
-        logger.error(f"Input directory {args.hdf5} does not exist.")
-        exit(1)
-    if not os.path.exists(args.schema):
-        logger.error(f"Schema file {args.schema} does not exist.")
-        exit(1)
-    if os.path.exists(args.avro):
-        logger.warning(f"Output directory {args.avro} already exists. It will be used.")
-    else:
-        os.makedirs(args.avro)
-
-    return [args.schema, args.hdf5, args.avro]
-
-
-def merge_avro_files(hdf5_path: str, avro_folder: str) -> Tuple[Any, List[Any]]:
-    results: List[Any] = []
-    schema: Any = None
-    for letter in tqdm(
-        os.listdir(hdf5_path), desc="Reading Avro files", unit="file", leave=False
-    ):
-        avro_file_path = os.path.join(avro_folder, f"{letter}.avro")
-        if not os.path.exists(avro_file_path):
-            continue
-        with open(avro_file_path, "rb") as avro_f:
-            reader = fastavro.reader(avro_f)
-            records = list(reader)
-            if results:
-                results.extend(records)
-            else:
-                results = records
-                schema = reader.schema
-    return schema, results
-
+def parse_args() -> Tuple[str, str, str, int]:
+    parser = argparse.ArgumentParser(description="Convert MSD HDF5 to Avro")
+    parser.add_argument("-i", "--input", required=True, dest="hdf5_dir", help="HDF5 root directory")
+    parser.add_argument("-o", "--output", required=True, dest="avro_dir", help="Avro output directory")
+    parser.add_argument("-s", "--schema", required=True, dest="schema_path", help="Avro schema file")
+    parser.add_argument("-t", "--threads", type=int, default=0, dest="threads", help="Number of threads")
+    args = parser.parse_args()
+    if not os.path.isdir(args.hdf5_dir):
+        logger.error(f"Input directory does not exist: {args.hdf5_dir}")
+        sys.exit(1)
+    if not os.path.isfile(args.schema_path):
+        logger.error(f"Schema file does not exist: {args.schema_path}")
+        sys.exit(1)
+    os.makedirs(args.avro_dir, exist_ok=True)
+    logger.info(f"Schema   : {args.schema_path}")
+    logger.info(f"Input    : {args.hdf5_dir}")
+    logger.info(f"Output   : {args.avro_dir}")
+    if args.threads > 0:
+        logger.info(f"Threads  : {args.threads}")
+    return args.schema_path, args.hdf5_dir, args.avro_dir, args.threads
 
 def get_field_type(field: Any) -> str | None:
     base_type = None
-
     if isinstance(field.type, list):
         for t in field.type:
             if str(t).lower() != "null":
@@ -111,92 +60,99 @@ def get_field_type(field: Any) -> str | None:
         base_type = field.type.type
     else:
         base_type = str(field.type)
-
-    base_type = str(base_type).lower()
-    if base_type == "string":
+    t = str(base_type).lower()
+    if t == "string":
         return "str"
-    elif base_type in ("int", "long"):
+    if t in ("int", "long"):
         return "int"
-    elif base_type in ("float", "double"):
+    if t in ("float", "double"):
         return "float"
-    else:
-        return None
+    return None
 
+def extract_hdf5_data(h5_path: str, schema: Any) -> Dict[str, Any]:
+    h5 = hdf5_getters.open_h5_file_read(h5_path)
+    record: Dict[str, Any] = {}
+    try:
+        for field in schema.fields:
+            getter_name = "get_" + field.name
+            if not hasattr(hdf5_getters, getter_name):
+                continue
+            try:
+                raw_value = getattr(hdf5_getters, getter_name)(h5)
+                ftype = get_field_type(field)
+                if ftype == "str":
+                    record[field.name] = str(raw_value)
+                elif ftype == "int":
+                    record[field.name] = int(raw_value)
+                elif ftype == "float":
+                    record[field.name] = float(raw_value)
+                else:
+                    record[field.name] = raw_value
+            except Exception as e:
+                logger.error(f"Error reading {field.name}: {e}")
+    finally:
+        h5.close()
+    return record
 
-def extract_hdf5_data(h5file: str, schema: Any) -> Dict[str, Any]:
-    hdf5 = hdf5_getters.open_h5_file_read(h5file)
-    fields = schema.fields
-    song_record: Dict[str, Any] = {}
-    for field in fields:
-        current_getter = "get_" + field.name
-        if not hasattr(hdf5_getters, current_getter):
-            logger.warning(f"Field {field.name} has no corresponding getter.")
-            continue
-        try:
-            value = getattr(hdf5_getters, current_getter)(hdf5)
-            type_ = get_field_type(field)
-            if type_ == "str":
-                song_record[field.name] = str(value)
-            elif type_ == "int":
-                song_record[field.name] = int(value)
-            elif type_ == "float":
-                song_record[field.name] = float(value)
-            else:
-                song_record[field.name] = value
-                logger.debug(f"Extracted {field.name}: {value}")
-        except Exception as e:
-            logger.error(f"Error processing field {field.name}: {e}")
-            continue
-    return song_record
+def find_all_h5_files(root: str) -> List[str]:
+    paths: List[str] = []
+    for dirpath, _, filenames in os.walk(root):
+        for fn in filenames:
+            if fn.endswith((".h5", ".hdf5")):
+                paths.append(os.path.join(dirpath, fn))
+    return paths
 
-
-def find_all_h5_files(folder_path: str) -> List[str]:
-    return [
-        os.path.join(root, h5file)
-        for root, _, files in os.walk(folder_path)
-        for h5file in files
-        if h5file.endswith(".h5") or h5file.endswith(".hdf5")
-    ]
-
-
-def aggregate_hdf5_to_avro(
-    schema_path: str, hdf5_path: str, avro_path: str, letter: str
-) -> None:
+def aggregate_letter(schema_path: str, hdf5_root: str, avro_dir: str, letter: str) -> None:
     schema = avroschema.parse(open(schema_path, "rb").read())
-    folder_path = os.path.join(hdf5_path, letter)
-    avro_file_path = os.path.join(avro_path, f"{letter}.avro")
-    h5files: List[str] = find_all_h5_files(folder_path)
-    if not h5files:
-        logger.warning(f"No .h5 files found in {folder_path}")
+    subfolder = os.path.join(hdf5_root, letter)
+    output_file = os.path.join(avro_dir, f"{letter}.avro")
+    h5_files = find_all_h5_files(subfolder)
+    if not h5_files:
         return
-    with DataFileWriter(
-        open(avro_file_path, "wb"),
-        DatumWriter(),
-        schema,
-    ) as writer:
-        for h5file in h5files:
-            record: Dict[str, Any] = extract_hdf5_data(h5file, schema)
-            if record:
-                writer.append(record)
-    logger.info(f"Finished processing {letter}. Output: {avro_file_path}")
+    with DataFileWriter(open(output_file, "wb"), DatumWriter(), schema) as writer:
+        for h5 in h5_files:
+            rec = extract_hdf5_data(h5, schema)
+            if rec:
+                writer.append(rec)
+    logger.info(f"[{letter}] written to {output_file}")
 
+def merge_avro(hdf5_root: str, avro_dir: str) -> None:
+    merged_records: List[Any] = []
+    merged_schema = None
+    for letter in tqdm(os.listdir(hdf5_root), desc="Merging Avro", unit="file"):
+        avro_file = os.path.join(avro_dir, f"{letter}.avro")
+        if not os.path.isfile(avro_file):
+            continue
+        with open(avro_file, "rb") as fr:
+            reader = fastavro.reader(fr)
+            records = list(reader)
+            if merged_schema is None:
+                merged_schema = reader.schema
+            merged_records.extend(records)
+    out_path = os.path.join(avro_dir, "aggregate.avro")
+    with open(out_path, "wb") as fw:
+        fastavro.write(fw, merged_schema, merged_records)
+    logger.success(f"aggregate.avro written to {out_path}")
+
+def main():
+    schema_path, hdf5_root, avro_dir, num_threads = parse_args()
+    logger.info("Starting conversion")
+    letters = [d for d in os.listdir(hdf5_root) if os.path.isdir(os.path.join(hdf5_root, d))]
+    if num_threads and num_threads > 0:
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = {executor.submit(aggregate_letter, schema_path, hdf5_root, avro_dir, letter): letter for letter in letters}
+            for future in tqdm(as_completed(futures), total=len(futures), desc="Processing threads"):
+                letter = futures[future]
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error(f"[{letter}] failed: {e}")
+    else:
+        for letter in tqdm(letters, desc="Processing sequentially"):
+            aggregate_letter(schema_path, hdf5_root, avro_dir, letter)
+    merge_avro(hdf5_root, avro_dir)
+    logger.info("Conversion completed")
 
 if __name__ == "__main__":
-    schema_path, hdf5_root, avro_output = parser()
-    logger.info("Starting conversion from HDF5 to Avro")
+    main()
 
-    try:
-        for fname in tqdm(os.listdir(hdf5_root), desc="Processing subfolders"):
-            aggregate_hdf5_to_avro(schema_path, hdf5_root, avro_output, fname)
-
-        merged_schema, merged_results = merge_avro_files(hdf5_root, avro_output)
-        output_file = os.path.join(avro_output, "aggregate.avro")
-        with open(output_file, "wb") as f:
-            fastavro.write(f, merged_schema, merged_results)
-        logger.success(f"Aggregate Avro file written to: {output_file}")
-
-    except Exception as e:
-        logger.exception(f"Fatal error during conversion: {e}")
-        sys.exit(1)
-
-    logger.info("Conversion completed successfully.")
