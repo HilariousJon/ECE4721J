@@ -14,14 +14,16 @@ init_env:
 aggregate_avro:
 	mkdir -p ./data
 	poetry run spark-submit \
-		--master local[12] \
+		--master local[4] \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
 		--conf spark.pyspark.python=$(PYTHON) \
 		--driver-cores 2 \
-		--driver-memory 8g \
-		--executor-cores 4 \
-		--num-executors 10 \
-		--executor-memory 4g \
+		--driver-memory 3g \
+		--executor-cores 1 \
+		--num-executors 2 \
+		--executor-memory 2g \
+		--conf spark.default.parallelism=2 \
+		--conf spark.local.dir=/tmp/spark_tmp \
 		--py-files src/m1/hdf5_getters.py \
 		src/m1/h5_to_avro.py \
 		-s src/m1/msd.avsc \
