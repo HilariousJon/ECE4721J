@@ -34,7 +34,12 @@ make aggregate_avro
 make extract
 ```
 
-- Run the spark job to find the distance between two artists:
+- Run the spark job to build the artists' distance graph:
 ```bash
-make artists_dis_spark
+make build_artists_graph
+```
+
+- Run the spark job to query the distance between two artists in the graph:
+```bash
+make query_artists_distance
 ```

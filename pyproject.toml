@@ -13,8 +13,7 @@ dependencies = [
     "avro>=1.10.2",
     "tqdm>=4.66.4",
     "tables>=3.9.2",
-    "loguru>=0.7.2",
-    "graphframes (>=0.6,<0.7)",
+    "loguru>=0.7.2"
 ]
 
 

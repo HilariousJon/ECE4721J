@@ -45,22 +45,33 @@ extract:
 	# use API from display_song later
 	$(PYTHON) src/m1/extract.py $(AVRO_FILE) $(OUTPUT_DIR)
 
-artists_dis_spark:
-	# run the spark job to find the distance between two artists
+build_artists_graph:
+	# run the spark job to build the artists graph
 	poetry run spark-submit \
 		--master local[4] \
-		--conf spark.pyspark.driver.python=$(PYTHON) \
-		--conf spark.pyspark.python=$(PYTHON) \
+		--conf spark.pyspark.driver.python=python3 \
+		--conf spark.pyspark.python=python3 \
 		--driver-cores 2 \
 		--driver-memory 3g \
 		--executor-cores 1 \
 		--num-executors 2 \
 		--executor-memory 2g \
-		--packages org.apache.spark:spark-avro_2.12:3.2.4,graphframes:graphframes:0.8.2-spark3.2-s_2.12 \
-		src/m2/artistsDis/spark/main.py \
-		--data ./data/aggregate.avro \
-		--start AR1W6QX1187B9A3F4C \
-		--end AR1W6QX1187B9A3F4D
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/artistsDis/spark/build_artists_graph.py \
+		--input ./data/aggregate.avro \
+		--output ./data/artists_graph
+
+query_artists_distance:
+	# run the spark job to query the distance between two artists in the graph
+	poetry run spark-submit \
+		--master local[2] \
+		--conf spark.pyspark.driver.python=python3 \
+		--conf spark.pyspark.python=python3 \
+		src/m2/artistsDis/spark/query_artist_distance.py \
+		--graph ./data/artists_graph \
+		--start ARJNIUY12298900C91 \
+		--end TRAAAAV128F421A322
+
 
 commit:
 	git add -A; \
