@@ -59,7 +59,8 @@ build_artists_graph:
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/artistsDis/spark/build_artists_graph.py \
 		--input ./data/aggregate.avro \
-		--output ./data/artists_graph
+		--output ./data/artists_graph \
+		--topk 5
 
 query_artists_distance:
 	# run the spark job to query the distance between two artists in the graph
