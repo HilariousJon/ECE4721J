@@ -29,8 +29,9 @@ def build_artist_pca(input_path, output_path, k_neighbors=5):
     scaled_df = scaler.fit(features_df).transform(features_df)
 
     # Apply PCA
-    pca = PCA(k=2, inputCol="scaled_features", outputCol="pca_vector")
+    pca = PCA(k=3, inputCol="scaled_features", outputCol="pca_vector")
     pca_model = pca.fit(scaled_df)
+    variance = pca_model.explainedVariance
     result_df = pca_model.transform(scaled_df).select("artist_id", "pca_vector")
 
     # Self join to compute pairwise distances
@@ -54,7 +55,7 @@ def build_artist_pca(input_path, output_path, k_neighbors=5):
     edges.write.mode("overwrite").json(output_path)
     spark.stop()
 
-    print("Explained variance:", pca_model.explainedVariance)
+    print("Explained variance:", variance)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
