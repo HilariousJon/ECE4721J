@@ -47,7 +47,20 @@ extract:
 
 artists_dis_spark:
 	# run the spark job to find the distance between two artists
-	poetry run $(PYTHON) src/m2/artistsDis/spark/main.py
+	poetry run spark-submit \
+		--master local[4] \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		--driver-cores 2 \
+		--driver-memory 3g \
+		--executor-cores 1 \
+		--num-executors 2 \
+		--executor-memory 2g \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4,graphframes:graphframes:0.8.2-spark3.2-s_2.12 \
+		src/m2/artistsDis/spark/main.py \
+		--data ./data/aggregate.avro \
+		--start AR1W6QX1187B9A3F4C \
+		--end AR1W6QX1187B9A3F4D
 
 commit:
 	git add -A; \
