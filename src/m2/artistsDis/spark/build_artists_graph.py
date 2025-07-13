@@ -4,6 +4,7 @@ from pyspark.sql.functions import col, udf, collect_list, struct
 from pyspark.sql.types import DoubleType
 from pyspark.ml.feature import VectorAssembler, StandardScaler, PCA
 from pyspark.ml.linalg import Vectors
+import time
 
 def euclidean_dist(v1, v2):
     return float(v1.squared_distance(v2)) ** 0.5
@@ -29,6 +30,7 @@ def build_artist_pca(input_path, output_path, k_neighbors=5):
     scaled_df = scaler.fit(features_df).transform(features_df)
 
     # Apply PCA
+    start_time = time.time()
     pca = PCA(k=3, inputCol="scaled_features", outputCol="pca_vector")
     pca_model = pca.fit(scaled_df)
     variance = pca_model.explainedVariance
@@ -49,13 +51,19 @@ def build_artist_pca(input_path, output_path, k_neighbors=5):
                  .filter(col("rank") <= k_neighbors)
 
     # Save as adjacency list (artist_id \t [neighbor1,neighbor2,...])
-    edges = topk.groupBy("a.artist_id") \
-        .agg(collect_list(col("b.artist_id")).alias("neighbors"))
+    from pyspark.sql.functions import collect_list
 
-    edges.write.mode("overwrite").json(output_path)
+    edges = topk.select(col("a.artist_id").alias("artist_id"), col("b.artist_id").alias("neighbor_id")) \
+                .groupBy("artist_id") \
+                .agg(collect_list("neighbor_id").alias("neighbors"))
+    end_time = time.time()
+
+    edges.write.mode("overwrite").parquet(output_path)
+
     spark.stop()
 
     print("Explained variance:", variance)
+    print("Graph build time:", end_time - start_time, "seconds")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

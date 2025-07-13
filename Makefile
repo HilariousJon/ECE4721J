@@ -58,7 +58,7 @@ build_artists_graph:
 		--executor-memory 2g \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/artistsDis/spark/build_artists_graph.py \
-		--input ./data/A.avro \
+		--input ./data/aggregate.avro \
 		--output ./data/artists_graph \
 		--topk 5
 
