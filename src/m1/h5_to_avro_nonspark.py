@@ -104,7 +104,8 @@ def extract_hdf5_data(h5_path: str, schema: Any) -> Dict[str, Any]:
                 elif ftype == "float":
                     record[field.name] = float(raw_value)
                 elif ftype == "array":
-                    record[field.name] = [row.tolist() for row in np.array(raw_value)]
+                    record[field.name] = [row.tolist() for row in np.array(raw_value, dtype=np.float32)]
+                    print(record[field.name])
                 else:
                     record[field.name] = raw_value
             except Exception as e:
@@ -135,22 +136,8 @@ def aggregate_letter(
     with DataFileWriter(open(output_file, "wb"), DatumWriter(), schema) as writer:
         for h5 in h5_files:
             rec = extract_hdf5_data(h5, schema)
-            if rec:
-                data_to_check = rec.get("segments_timbre")
-                if data_to_check is not None:
-                    print("--- DEBUGGING INFO ---")
-                    print(f"DEBUG: Outer container type: {type(data_to_check)}")
-                    if isinstance(data_to_check, list) and len(data_to_check) > 0:
-                        print(f"DEBUG: Inner container type: {type(data_to_check[0])}")
-                        if isinstance(data_to_check[0], list) and len(data_to_check[0]) > 0:
-                            print(f"DEBUG: Innermost element type: {type(data_to_check[0][0])}")
-                    try:
-                        contains_nan = np.isnan(data_to_check).any()
-                        print(f"DEBUG: Contains NaN values? {contains_nan}")
-                    except TypeError:
-                        print("DEBUG: Could not perform NaN check (likely not a NumPy array).")
-                    print("--- END DEBUGGING INFO ---")
-                writer.append(rec)
+            # if rec:
+                # writer.append(rec)
     logger.info(f"[{letter}] written to {output_file}")
 
 
