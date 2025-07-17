@@ -99,7 +99,7 @@ def extract_hdf5_data(h5_path: str, schema: Dict[str, Any]) -> Dict[str, Any]:
                     record[field["name"]] = float(raw_value)
                 elif ftype == "array":
                     if raw_value is not None:
-                        safe_array = np.nan_to_num(np.array(raw_value))
+                        safe_array = calculate_year_prediction_features(np.array(raw_value))
                         record[field["name"]] = safe_array.tolist()
                     else:
                         record[field["name"]] = None
@@ -110,6 +110,20 @@ def extract_hdf5_data(h5_path: str, schema: Dict[str, Any]) -> Dict[str, Any]:
     finally:
         h5.close()
     return record
+
+
+def calculate_year_prediction_features(timbre_array: np.ndarray) -> np.ndarray:
+    if timbre_array.ndim != 2 or timbre_array.shape[1] != 12:
+        raise ValueError("input must be a 2D array with shape (N, 12)")
+
+    timbre_averages = np.mean(timbre_array, axis=0)
+
+    covariance_matrix = np.cov(timbre_array, rowvar=False)
+
+    indices = np.triu_indices(12)
+    timbre_covariance_features = covariance_matrix[indices]
+
+    return np.concatenate((timbre_averages, timbre_covariance_features))
 
 
 def find_all_h5_files(root: str) -> List[str]:
