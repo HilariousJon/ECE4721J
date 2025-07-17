@@ -4,7 +4,7 @@ import os
 import numpy as np
 import sys
 import argparse
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Iterator
 from tqdm import tqdm
 from loguru import logger
 import hdf5_getters
@@ -24,7 +24,7 @@ logger.add(
 
 def parse_args() -> Tuple[str, str, str, int]:
     parser = argparse.ArgumentParser(
-        description="Convert MSD HDF5 to Avro using fastavro"
+        description="Convert MSD HDF5 to Avro using fastavro (Low Memory Mode)"
     )
     parser.add_argument(
         "-i", "--input", required=True, dest="hdf5_dir", help="HDF5 root directory"
@@ -56,21 +56,14 @@ def parse_args() -> Tuple[str, str, str, int]:
 
 def get_field_type(field_schema: Dict[str, Any]) -> str | None:
     type_info = field_schema.get("type")
-
-    # Handle union types like ["string", "null"]
     if isinstance(type_info, list):
-        # Find the first non-null type in the union
         base_type = next((t for t in type_info if t != "null"), None)
     else:
         base_type = type_info
-
-    # Handle complex types like arrays
     if isinstance(base_type, dict):
         base_type = base_type.get("type")
-
     if not isinstance(base_type, str):
         return None
-
     t = base_type.lower()
     if t == "string":
         return "str"
@@ -84,25 +77,17 @@ def get_field_type(field_schema: Dict[str, Any]) -> str | None:
 
 
 def extract_hdf5_data(h5_path: str, schema: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Extracts data from an HDF5 file and prepares it for Avro serialization.
-    This version contains the CRITICAL FIX for handling array data.
-    """
     h5 = hdf5_getters.open_h5_file_read(h5_path)
     record: Dict[str, Any] = {}
     try:
-        # fastavro parses schema into a dict, so we access fields via schema['fields']
         for field in schema["fields"]:
             getter_name = "get_" + field["name"]
             if not hasattr(hdf5_getters, getter_name):
                 continue
-
             try:
                 raw_value = getattr(hdf5_getters, getter_name)(h5)
                 ftype = get_field_type(field)
-
                 if ftype == "str":
-                    # Decode bytes to string if necessary, then cast to string
                     record[field["name"]] = (
                         raw_value.decode("utf-8")
                         if isinstance(raw_value, bytes)
@@ -128,7 +113,6 @@ def extract_hdf5_data(h5_path: str, schema: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def find_all_h5_files(root: str) -> List[str]:
-    """File finding logic remains the same."""
     paths: List[str] = []
     for dirpath, _, filenames in os.walk(root):
         for fn in filenames:
@@ -137,12 +121,19 @@ def find_all_h5_files(root: str) -> List[str]:
     return paths
 
 
+def generate_records(
+    h5_files: List[str], schema: Dict[str, Any]
+) -> Iterator[Dict[str, Any]]:
+    for h5_path in h5_files:
+        rec = extract_hdf5_data(h5_path, schema)
+        if rec:
+            yield rec
+
+
 def aggregate_letter(
     schema_path: str, hdf5_root: str, avro_dir: str, letter: str
 ) -> None:
-    # Use fastavro's simpler schema loading
     parsed_schema = fastavro.schema.load_schema(schema_path)
-
     subfolder = os.path.join(hdf5_root, letter)
     output_file = os.path.join(avro_dir, f"{letter}.avro")
     h5_files = find_all_h5_files(subfolder)
@@ -150,33 +141,29 @@ def aggregate_letter(
     if not h5_files:
         return
 
-    # Collect all records first
-    records = []
-    for h5_path in h5_files:
-        rec = extract_hdf5_data(h5_path, parsed_schema)
-        if rec:
-            records.append(rec)
+    # Create a generator that will provide records one by one
+    records_generator = generate_records(h5_files, parsed_schema)
 
-    # Write all records at once using fastavro.writer for better performance
-    if records:
-        try:
-            with open(output_file, "wb") as out_fp:
-                fastavro.writer(out_fp, parsed_schema, records)
-            logger.info(f"[{letter}] Wrote {len(records)} records to {output_file}")
-        except Exception as e:
-            logger.error(f"Failed to write Avro file for letter '{letter}': {e}")
+    try:
+        with open(output_file, "wb") as out_fp:
+            # fastavro.writer can consume a generator directly, writing record by record
+            fastavro.writer(out_fp, parsed_schema, records_generator)
+        logger.info(f"[{letter}] Successfully wrote records to {output_file}")
+    except Exception as e:
+        logger.error(f"Failed to write Avro file for letter '{letter}': {e}")
 
 
 def main():
     schema_path, hdf5_root, avro_dir, num_threads = parse_args()
-    logger.info("Starting conversion with fastavro")
+    logger.info("Starting conversion with fastavro (Low Memory Mode)")
 
     letters = [
         d for d in os.listdir(hdf5_root) if os.path.isdir(os.path.join(hdf5_root, d))
     ]
 
-    if num_threads and num_threads > 1:  # Use > 1 to be explicit
+    if num_threads and num_threads > 1:
         logger.info(f"Processing with {num_threads} threads...")
+        # sequentially to keep memory low within the thread.
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = {
                 executor.submit(
@@ -184,7 +171,6 @@ def main():
                 ): letter
                 for letter in letters
             }
-            # Use tqdm for progress tracking in multithreaded mode
             for future in tqdm(
                 as_completed(futures), total=len(futures), desc="Processing threads"
             ):
@@ -192,7 +178,6 @@ def main():
                 try:
                     future.result()
                 except Exception as e:
-                    # The specific error is now logged inside aggregate_letter or extract_hdf5_data
                     logger.error(
                         f"Thread for letter '{letter}' encountered a fatal error."
                     )
