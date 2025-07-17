@@ -73,6 +73,7 @@ commit:
 	git commit -m "chore(p1m2): auto backup [build joj]" --allow-empty && git push
 
 fmt_json:
-	cat src/m1/msd.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd.avsc
+	cat src/m1/msd_meta.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_meta.avsc
+	cat src/m1/msd_year_prediction.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_year_prediction.avsc
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
