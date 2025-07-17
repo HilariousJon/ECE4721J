@@ -80,24 +80,6 @@ def parser() -> List[str]:
     return [args.schema, args.hdf5, args.avro]
 
 
-def merge_avro_files(hdf5_path: str, avro_folder: str) -> Tuple[Any, List[Any]]:
-    results: List[Any] = []
-    schema: Any = None
-    for letter in tqdm(
-        os.listdir(hdf5_path), desc="Reading Avro files", unit="file", leave=False
-    ):
-        avro_file_path = avro_folder + f"/{letter}.avro"
-        with open(avro_file_path, "rb") as avro_f:
-            reader = fastavro.reader(avro_f)
-            records = list(reader)
-            if results:
-                results.extend(records)
-            else:
-                results = records
-                schema = reader.schema
-    return schema, results
-
-
 def get_field_type(field: Any) -> str | None:
 
     base_type = None
@@ -213,16 +195,6 @@ if __name__ == "__main__":
             )
         ).collect()
         logger.info("All files processed successfully.")
-        merged_schema, merged_results = merge_avro_files(
-            parse_results[1], parse_results[2]
-        )
-        with open(os.path.join(parse_results[2], "aggregate.avro"), "wb") as f:
-            fastavro.write(f, merged_schema, merged_results)
-        logger.info(
-            "Aggregate Avro file created successfully at {}".format(
-                os.path.join(parse_results[2], "aggregate.avro")
-            )
-        )
     except Exception as e:
         logger.error(f"Error during conversion: {e}")
         sc.stop()

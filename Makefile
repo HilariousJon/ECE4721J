@@ -30,6 +30,12 @@ aggregate_avro:
 		-o ./data/ \
 		-i /mnt/msd_data/data
 
+agg_avro:
+	python src/m1/h5_to_avro_nonspark.py \
+		-s src/m1/msd.avsc \
+		-o ./data/ \
+		-i /mnt/msd_data/data
+
 mount_data_init:
 	# run it every time you reset your computer
 	sudo mkdir -p /mnt/msd_data /home/hadoopuser/ece472
