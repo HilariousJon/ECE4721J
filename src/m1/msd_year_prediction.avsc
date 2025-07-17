@@ -106,16 +106,8 @@
     },
     {
       "name": "segments_timbre",
-      "type": [
-        {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "items": "float"
-          }
-        },
-        "null"
-      ],
+      "type": "array",
+      "items": "float",
       "doc": "timbre features for each song, texture features (MFCC+PCA-like), processed for year prediction functions."
     }
   ]
