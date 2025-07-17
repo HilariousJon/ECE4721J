@@ -5,19 +5,26 @@ from tqdm import tqdm
 from loguru import logger
 
 logger.remove()
-logger.add(sys.stderr, colorize=True,
-           format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-                  "<level>{level: <8}</level> | "
-                  "<cyan>{message}</cyan>")
+logger.add(
+    sys.stderr,
+    colorize=True,
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+    "<level>{level: <8}</level> | "
+    "<cyan>{message}</cyan>",
+)
+
 
 def merge_avro_files(avro_dir: str, output_filename: str = "aggregate.avro"):
     merged_records = []
     merged_schema = None
 
-    avro_files = sorted([
-        f for f in os.listdir(avro_dir)
-        if f.endswith(".avro") and f != output_filename
-    ])
+    avro_files = sorted(
+        [
+            f
+            for f in os.listdir(avro_dir)
+            if f.endswith(".avro") and f != output_filename
+        ]
+    )
 
     if not avro_files:
         logger.error("No .avro files found in the specified directory.")
@@ -46,6 +53,7 @@ def merge_avro_files(avro_dir: str, output_filename: str = "aggregate.avro"):
     except Exception as e:
         logger.error(f"Failed to write merged file: {e}")
 
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python merge_avro.py <avro_dir> [output_filename]")
@@ -54,4 +62,3 @@ if __name__ == "__main__":
     avro_dir = sys.argv[1]
     output_name = sys.argv[2] if len(sys.argv) > 2 else "aggregate.avro"
     merge_avro_files(avro_dir, output_name)
-
