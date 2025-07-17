@@ -111,6 +111,7 @@
         "items": {
           "type": "array",
           "items": "float"
+        }
       },
       "doc": "timbre features for each song, texture features (MFCC+PCA-like), processed for year prediction functions."
     }
