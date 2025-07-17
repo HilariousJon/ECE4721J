@@ -1,7 +1,7 @@
 {
   "namespace": "msd_meta.avro",
   "type": "record",
-  "name": "MSD-META",
+  "name": "MSD_META",
   "doc": "A comprehensive schema for MSD songs, tailored for ECE472 Project 1, including detailed features for advanced analysis.",
   "fields": [
     {
