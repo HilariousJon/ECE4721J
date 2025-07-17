@@ -106,6 +106,7 @@ def extract_hdf5_data(h5_path: str, schema: Any) -> Dict[str, Any]:
                 elif ftype == "array":
                     if raw_value is not None:
                         numpy_array = np.array(raw_value)
+                        numpy_array = np.nan_to_num(numpy_array, nan=0.0)
                         perfect_list = [
                             [float(item) for item in sublist] for sublist in numpy_array
                         ]
