@@ -104,7 +104,7 @@ def extract_hdf5_data(h5_path: str, schema: Any) -> Dict[str, Any]:
                 elif ftype == "float":
                     record[field.name] = float(raw_value)
                 elif ftype == "array":
-                    record[field.name] = np.array(raw_value)
+                    record[field.name] = raw_value
                 else:
                     record[field.name] = raw_value
             except Exception as e:
@@ -132,16 +132,11 @@ def aggregate_letter(
     h5_files = find_all_h5_files(subfolder)
     if not h5_files:
         return
-    # with DataFileWriter(open(output_file, "wb"), DatumWriter(), schema) as writer:
-    #     for h5 in h5_files:
-    #         rec = extract_hdf5_data(h5, schema)
-    #         if rec:
-    #             writer.append(rec)
-    with open(output_file, "wb") as f:
+    with DataFileWriter(open(output_file, "wb"), DatumWriter(), schema) as writer:
         for h5 in h5_files:
             rec = extract_hdf5_data(h5, schema)
             if rec:
-                fastavro.writer(f, schema, rec)
+                writer.append(rec)
     logger.info(f"[{letter}] written to {output_file}")
 
 
