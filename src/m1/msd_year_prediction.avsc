@@ -1,7 +1,7 @@
 {
-  "namespace": "msd.avro",
+  "namespace": "msd_meta.avro",
   "type": "record",
-  "name": "MSD",
+  "name": "MSD_YEAR",
   "doc": "A comprehensive schema for MSD songs, tailored for ECE472 Project 1, including detailed features for advanced analysis.",
   "fields": [
     {
@@ -50,22 +50,6 @@
         "null"
       ],
       "doc": "Reported location of the artist."
-    },
-    {
-      "name": "artist_latitude",
-      "type": [
-        "double",
-        "null"
-      ],
-      "doc": "Latitude of the artist's location."
-    },
-    {
-      "name": "artist_longitude",
-      "type": [
-        "double",
-        "null"
-      ],
-      "doc": "Longitude of the artist's location."
     },
     {
       "name": "year",
@@ -121,20 +105,12 @@
       "doc": "Popularity measure of the song."
     },
     {
-      "name": "artist_hotttnesss",
-      "type": [
-        "double",
-        "null"
-      ],
-      "doc": "Popularity measure of the artist."
-    },
-    {
-      "name": "artist_familiarity",
-      "type": [
-        "double",
-        "null"
-      ],
-      "doc": "Familiarity measure of the artist."
+      "name": "segments_timbre",
+      "type": {
+        "type": "array",
+        "items": "double"
+      },
+      "doc": "timbre features for each song, texture features (MFCC+PCA-like), processed for year prediction functions."
     }
   ]
 }
