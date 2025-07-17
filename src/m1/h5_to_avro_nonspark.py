@@ -132,15 +132,11 @@ def aggregate_letter(
     h5_files = find_all_h5_files(subfolder)
     if not h5_files:
         return
-    # with DataFileWriter(open(output_file, "wb"), DatumWriter(), schema) as writer:
-    #     for h5 in h5_files:
-    #         rec = extract_hdf5_data(h5, schema)
-    #         if rec:
-    #             writer.append(rec)
-    with open(output_file, "wb") as f:
+    with DataFileWriter(open(output_file, "wb"), DatumWriter(), schema) as writer:
         for h5 in h5_files:
             rec = extract_hdf5_data(h5, schema)
-            fastavro.write(f, schema, rec)
+            if rec:
+                writer.append(rec)
     logger.info(f"[{letter}] written to {output_file}")
 
 
