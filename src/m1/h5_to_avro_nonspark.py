@@ -106,8 +106,6 @@ def extract_hdf5_data(h5_path: str, schema: Any) -> Dict[str, Any]:
                 elif ftype == "array":
                     record[field.name] = (
                         np.array(raw_value).tolist()
-                        if isinstance(raw_value, np.ndarray)
-                        else raw_value
                     )
                 else:
                     record[field.name] = raw_value
