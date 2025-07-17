@@ -26,7 +26,7 @@ aggregate_avro:
 		--conf spark.local.dir=/tmp/spark_tmp \
 		--py-files src/m1/hdf5_getters.py \
 		src/m1/h5_to_avro.py \
-		-s src/m1/msd.avsc \
+		-s src/m1/msd_meta.avsc \
 		-o ./data/ \
 		-i /mnt/msd_data/data
 	python src/m1/merge_avro.py \
@@ -35,12 +35,21 @@ aggregate_avro:
 
 agg_avro:
 	python src/m1/h5_to_avro_nonspark.py \
-		-s src/m1/msd.avsc \
+		-s src/m1/msd_meta.avsc \
 		-o ./data/ \
 		-i /mnt/msd_data/data
 	python src/m1/merge_avro.py \
 		-i ./data/ \
 		-o ./data/aggregate.avro
+
+year_avro:
+	python src/m1/h5_to_avro_nonspark.py \
+		-s src/m1/msd_year_prediction.avsc \
+		-o ./year-data/ \
+		-i /mnt/msd_data/data 
+	python src/m1/merge_avro.py \
+		-i ./year-data/ \
+		-o ./year-data/aggregate_year_prediction.avro
 
 mount_data_init:
 	# run it every time you reset your computer

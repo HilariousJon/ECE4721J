@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import fastavro
 import os
+import numpy as np
 import sys
 import argparse
 from typing import List, Dict, Any, Tuple
@@ -61,6 +62,9 @@ def get_field_type(field: Any) -> str | None:
             if str(t).lower() != "null":
                 base_type = t
                 break
+    elif isinstance(field.type, dict):
+        # handle specifically the case of segments_timbre
+        base_type = field.type.get("type")
     elif isinstance(field.type, UnionSchema):
         for option in field.type.schemas:
             if isinstance(option, PrimitiveSchema):
@@ -77,6 +81,8 @@ def get_field_type(field: Any) -> str | None:
         return "int"
     if t in ("float", "double"):
         return "float"
+    if t == "array":
+        return "array"
     return None
 
 
@@ -97,6 +103,12 @@ def extract_hdf5_data(h5_path: str, schema: Any) -> Dict[str, Any]:
                     record[field.name] = int(raw_value)
                 elif ftype == "float":
                     record[field.name] = float(raw_value)
+                elif ftype == "array":
+                    record[field.name] = (
+                        np.array(raw_value).tolist()
+                        if isinstance(raw_value, np.ndarray)
+                        else raw_value
+                    )
                 else:
                     record[field.name] = raw_value
             except Exception as e:
