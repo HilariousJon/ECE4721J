@@ -29,12 +29,18 @@ aggregate_avro:
 		-s src/m1/msd.avsc \
 		-o ./data/ \
 		-i /mnt/msd_data/data
+	python src/m1/merge_avro.py \
+		-i ./data/ \
+		-o ./data/aggregate.avro
 
 agg_avro:
 	python src/m1/h5_to_avro_nonspark.py \
 		-s src/m1/msd.avsc \
 		-o ./data/ \
 		-i /mnt/msd_data/data
+	python src/m1/merge_avro.py \
+		-i ./data/ \
+		-o ./data/aggregate.avro
 
 mount_data_init:
 	# run it every time you reset your computer
