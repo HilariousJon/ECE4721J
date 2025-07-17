@@ -105,7 +105,7 @@ def extract_hdf5_data(h5_path: str, schema: Any) -> Dict[str, Any]:
                     record[field.name] = float(raw_value)
                 elif ftype == "array":
                     record[field.name] = (
-                        np.array(raw_value).tolist()
+                        np.array(raw_value) if raw_value is not None else None
                     )
                 else:
                     record[field.name] = raw_value
