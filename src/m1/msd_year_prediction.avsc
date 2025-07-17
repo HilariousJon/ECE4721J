@@ -109,7 +109,10 @@
       "type": [
         {
           "type": "array",
-          "items": "double"
+          "items": {
+            "type": "array",
+            "items": "float"
+          }
         },
         "null"
       ],
