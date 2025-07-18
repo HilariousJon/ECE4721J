@@ -77,13 +77,15 @@ fmt_json:
 	cat src/m1/msd_year_prediction.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_year_prediction.avsc
 
 run_random_forest:
+	mkdir -p ./output
 	poetry run spark-submit \
-		--master local[4] \
+		--master local[1] \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
 		--conf spark.pyspark.python=$(PYTHON) \
 		src/year_prediction/ml_models.py \
-		--model random_forest \
-		--input src/m1/aggregate_year_prediction.avro \
-		--output src/year_prediction/output/rf_output.h5
+		--model 2 \
+		--filepath ./year-data/YearPredictionMSD.csv \
+		--output ./output/results.csv \
+		--tolerance 5.0
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
