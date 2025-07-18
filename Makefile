@@ -45,7 +45,7 @@ extract:
 	# use API from display_song later
 	$(PYTHON) src/m1/extract.py $(AVRO_FILE) $(OUTPUT_DIR)
 
-build_artists_graph:
+build_artists_graph_spark:
 	# run the spark job to build the artists graph
 	poetry run spark-submit \
 		--master local[4] \
@@ -57,10 +57,25 @@ build_artists_graph:
 		--num-executors 2 \
 		--executor-memory 2g \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
-		src/m2/artistsDis/spark/build_artists_graph.py \
+		src/m2/artistsDis/spark/build_artists_graph_spark.py \
 		--input ./data/aggregate.avro \
 		--output ./data/artists_graph \
 		--topk 50
+
+convert_avro_to_json:
+	# convert the avro file to jsonl format
+	poetry run $(PYTHON) src/m2/artistsDis/mapreduce/convert_avro_to_json.py \
+		--input ./data/aggregate.avro \
+		--output ./data/artists.jsonl
+
+build_artists_graph_mr:
+	# run the mapreduce job to build the artists graph
+	ulimit -v 7000000; \
+	timeout 900s cpulimit --limit=400 -- \
+	poetry run python3 src/m2/artistsDis/mapreduce/build_artists_graph_mr.py \
+	--input ./data/artists.jsonl \
+	--output ./data/artists_graph_mr.jsonl \
+	--topk 50
 
 query_artists_distance:
 	# run the spark job to query the distance between two artists in the graph
@@ -72,7 +87,6 @@ query_artists_distance:
 		--graph ./data/artists_graph \
 		--start ARJNIUY12298900C91 \
 		--end TRAAAAV128F421A322
-
 
 commit:
 	git add -A; \

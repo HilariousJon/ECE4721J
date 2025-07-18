@@ -6,7 +6,7 @@ from pyspark.sql.window import Window
 from pyspark.ml.feature import VectorAssembler, StandardScaler, PCA, BucketedRandomProjectionLSH
 from pyspark.sql.functions import expr
 
-def build_artist_graph(input_path, output_path, k_neighbors=5):
+def build_artist_graph(input_path, output_path, k_neighbors):
     spark = SparkSession.builder.appName("ArtistGraphWithLSH").getOrCreate()
 
     # Load and clean
