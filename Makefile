@@ -30,7 +30,7 @@ aggregate_avro:
 		-o ./data/ \
 		-i /mnt/msd_data/data
 	python src/m1/merge_avro.py \
-		 ./data/ \
+		data/ \
 		aggregate.avro
 
 agg_avro:
@@ -82,6 +82,7 @@ run_random_forest:
 		--master local[1] \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
 		--conf spark.pyspark.python=$(PYTHON) \
+		--files year-data/YearPredictionMSD.csv \
 		src/year_prediction/ml_models.py \
 		--model 2 \
 		--filepath year-data/YearPredictionMSD.csv \
