@@ -84,9 +84,8 @@ run_random_forest:
 		--conf spark.pyspark.python=$(PYTHON) \
 		src/year_prediction/ml_models.py \
 		--model 2 \
-		--filepath ./year-data/YearPredictionMSD.csv \
-		--output ./output/results.csv \
+		--filepath year-data/YearPredictionMSD.csv \
+		--output output/results.csv \
 		--tolerance 5.0
-
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
