@@ -210,7 +210,7 @@ def main():
     )
 
     try:
-        data = spark.read.csv(filepath, schema=schema)
+        data = spark.read.csv("file:///" + filepath, schema=schema)
     except Exception as e:
         print(f"Error: Could not find or read '{filepath}'.")
         print("Please ensure the file path is correct.")
