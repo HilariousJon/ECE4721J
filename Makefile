@@ -85,7 +85,7 @@ run_random_forest:
 		src/year_prediction/ml_models.py \
 		--model 2 \
 		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
-		--output output/results.csv \
+		--output results \
 		--tolerance 5.0
 
 run_ridge_regression:
@@ -97,7 +97,7 @@ run_ridge_regression:
 		src/year_prediction/ml_models.py \
 		--model 1 \
 		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
-		--output output/results.csv \
+		--output results \
 		--tolerance 5.0
 
 run_GBT:
@@ -109,7 +109,7 @@ run_GBT:
 		src/year_prediction/ml_models.py \
 		--model 3 \
 		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
-		--output output/results.csv \
+		--output results \
 		--tolerance 5.0
 
 run_mini_batch_gd:
@@ -121,7 +121,7 @@ run_mini_batch_gd:
 		src/year_prediction/ml_models.py \
 		--model 4 \
 		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
-		--output output/results.csv \
+		--output results \
 		--tolerance 5.0
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
