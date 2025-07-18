@@ -30,8 +30,8 @@ aggregate_avro:
 		-o ./data/ \
 		-i /mnt/msd_data/data
 	python src/m1/merge_avro.py \
-		-i ./data/ \
-		-o ./data/aggregate.avro
+		 ./data/ \
+		aggregate.avro
 
 agg_avro:
 	python src/m1/h5_to_avro_nonspark.py \
@@ -39,8 +39,8 @@ agg_avro:
 		-o ./data/ \
 		-i /mnt/msd_data/data
 	python src/m1/merge_avro.py \
-		-i ./data/ \
-		-o ./data/aggregate.avro
+		data/ \
+		aggregate.avro
 
 year_avro:
 	python src/m1/h5_to_avro_nonspark.py \
@@ -48,8 +48,8 @@ year_avro:
 		-o ./year-data/ \
 		-i /mnt/msd_data/data 
 	python src/m1/merge_avro.py \
-		-i ./year-data/ \
-		-o ./year-data/aggregate_year_prediction.avro
+		year-data/ \
+		aggregate_year_prediction.avro
 
 mount_data_init:
 	# run it every time you reset your computer
