@@ -10,7 +10,6 @@ from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.mllib.regression import LabeledPoint, LinearRegressionWithSGD
 
 LABEL_COL = "year"
-TOLERANCE_YEARS = 5.0
 
 
 def calculate_accuracy(predictions_df, tolerance):
@@ -22,7 +21,9 @@ def calculate_accuracy(predictions_df, tolerance):
     return accuracy_val
 
 
-def evaluate_and_print_metrics(model_name, predictions_df, output_path=None):
+def evaluate_and_print_metrics(
+    model_name, predictions_df, output_path=None, tolerance=5.0
+):
     """Evaluates predictions, prints the results, and optionally appends them to a CSV file."""
     evaluator_rmse = RegressionEvaluator(
         labelCol=LABEL_COL, predictionCol="prediction", metricName="rmse"
@@ -33,12 +34,12 @@ def evaluate_and_print_metrics(model_name, predictions_df, output_path=None):
 
     rmse = evaluator_rmse.evaluate(predictions_df)
     mae = evaluator_mae.evaluate(predictions_df)
-    accuracy = calculate_accuracy(predictions_df, TOLERANCE_YEARS)
+    accuracy = calculate_accuracy(predictions_df, tolerance)
 
     print(f"\n--- Evaluation Results for {model_name} ---")
     print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
     print(f"Mean Absolute Error (MAE):  {mae:.4f}")
-    print(f"Accuracy (+/- {TOLERANCE_YEARS} years): {accuracy:.2%}")
+    print(f"Accuracy (+/- {tolerance} years): {accuracy:.2%}")
 
     # Append the results to a CSV file if an output path is provided
     if output_path:
@@ -70,7 +71,9 @@ def evaluate_and_print_metrics(model_name, predictions_df, output_path=None):
             )
 
 
-def run_ridge_regression(training_data, test_data, preproc_stages, output_path):
+def run_ridge_regression(
+    training_data, test_data, preproc_stages, output_path, tolerance
+):
     """Trains and evaluates a Ridge Regression model."""
     print("\n--- Training Ridge Regression Model ---")
     lr = LinearRegression(
@@ -79,10 +82,10 @@ def run_ridge_regression(training_data, test_data, preproc_stages, output_path):
     pipeline = Pipeline(stages=preproc_stages + [lr])
     model = pipeline.fit(training_data)
     predictions = model.transform(test_data)
-    evaluate_and_print_metrics("Ridge Regression", predictions, output_path)
+    evaluate_and_print_metrics("Ridge Regression", predictions, output_path, tolerance)
 
 
-def run_random_forest(training_data, test_data, preproc_stages, output_path):
+def run_random_forest(training_data, test_data, preproc_stages, output_path, tolerance):
     """Trains and evaluates a Random Forest Regressor model."""
     print("\n--- Training Random Forest Model ---")
     rf = RandomForestRegressor(
@@ -91,10 +94,10 @@ def run_random_forest(training_data, test_data, preproc_stages, output_path):
     pipeline = Pipeline(stages=preproc_stages + [rf])
     model = pipeline.fit(training_data)
     predictions = model.transform(test_data)
-    evaluate_and_print_metrics("Random Forest", predictions, output_path)
+    evaluate_and_print_metrics("Random Forest", predictions, output_path, tolerance)
 
 
-def run_gbt(training_data, test_data, preproc_stages, output_path):
+def run_gbt(training_data, test_data, preproc_stages, output_path, tolerance):
     """Trains and evaluates a Gradient-Boosted Tree Regressor model."""
     print("\n--- Training Gradient-Boosted Tree (GBT) Model ---")
     gbt = GBTRegressor(
@@ -103,10 +106,12 @@ def run_gbt(training_data, test_data, preproc_stages, output_path):
     pipeline = Pipeline(stages=preproc_stages + [gbt])
     model = pipeline.fit(training_data)
     predictions = model.transform(test_data)
-    evaluate_and_print_metrics("Gradient-Boosted Tree (GBT)", predictions, output_path)
+    evaluate_and_print_metrics(
+        "Gradient-Boosted Tree (GBT)", predictions, output_path, tolerance
+    )
 
 
-def run_mini_batch_gd(training_data, test_data, preproc_stages, output_path):
+def run_mini_batch_gd(training_data, test_data, preproc_stages, output_path, tolerance):
     """Trains and evaluates a Linear Regression model with Mini-Batch Gradient Descent."""
     print("\n--- Training Linear Regression with Mini-Batch Gradient Descent ---")
     # Note: This model uses the older RDD-based API (spark.mllib).
@@ -135,7 +140,7 @@ def run_mini_batch_gd(training_data, test_data, preproc_stages, output_path):
     predictions_df = predictions_and_labels_rdd.toDF(["prediction", LABEL_COL])
 
     evaluate_and_print_metrics(
-        "Linear Regression (Mini-Batch GD)", predictions_df, output_path
+        "Linear Regression (Mini-Batch GD)", predictions_df, output_path, tolerance
     )
 
 
@@ -169,11 +174,19 @@ def main():
         default=None,
         help="Optional path to append the prediction results to a CSV file.",
     )
+    parser.add_argument(
+        "-t",
+        "--tolerance",
+        type=float,
+        default=5.0,
+        help="Tolerance in years for accuracy calculation (default: 5.0).",
+    )
 
     args = parser.parse_args()
     model_number = args.model
     filepath = args.filepath
     output_path = args.output
+    tolerance = args.tolerance
 
     model_map = {
         1: ("Ridge", run_ridge_regression),
@@ -220,7 +233,7 @@ def main():
         f"Data loading complete. Training set count: {training_data.count()}, Test set count: {test_data.count()}"
     )
 
-    model_func(training_data, test_data, preprocessing_stages, output_path)
+    model_func(training_data, test_data, preprocessing_stages, output_path, tolerance)
 
     training_data.unpersist()
     test_data.unpersist()
