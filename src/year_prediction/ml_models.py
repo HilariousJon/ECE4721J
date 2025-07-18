@@ -2,7 +2,7 @@ import sys
 import argparse
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, DoubleType
-from pyspark.sql.functions import abs, when, col
+from pyspark.sql.functions import abs, when, col, lit, current_timestamp
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import VectorAssembler, StandardScaler
 from pyspark.ml.regression import LinearRegression, RandomForestRegressor, GBTRegressor
@@ -23,7 +23,7 @@ def calculate_accuracy(predictions_df, tolerance):
 
 
 def evaluate_and_print_metrics(model_name, predictions_df, output_path=None):
-    """Evaluates predictions, prints the results, and optionally saves them to a CSV file."""
+    """Evaluates predictions, prints the results, and optionally appends them to a CSV file."""
     evaluator_rmse = RegressionEvaluator(
         labelCol=LABEL_COL, predictionCol="prediction", metricName="rmse"
     )
@@ -40,27 +40,34 @@ def evaluate_and_print_metrics(model_name, predictions_df, output_path=None):
     print(f"Mean Absolute Error (MAE):  {mae:.4f}")
     print(f"Accuracy (+/- {TOLERANCE_YEARS} years): {accuracy:.2%}")
 
-    # Save the results to a CSV file if an output path is provided
+    # Append the results to a CSV file if an output path is provided
     if output_path:
-        print(f"Saving prediction results to {output_path}...")
+        print(f"Appending prediction results to {output_path}...")
         try:
-            # Select relevant columns for output and calculate absolute error
-            output_df = predictions_df.select(LABEL_COL, "prediction").withColumn(
-                "absolute_error", abs(col(LABEL_COL) - col("prediction"))
+            # Add metadata columns for a more descriptive log format
+            output_df_with_metadata = predictions_df.withColumn(
+                "model_name", lit(model_name)
+            ).withColumn("timestamp", current_timestamp())
+
+            # Select and rename columns for the final output format
+            output_df_formatted = output_df_with_metadata.select(
+                col("timestamp"),
+                col("model_name"),
+                col(LABEL_COL).alias("true_year"),
+                col("prediction").alias("predicted_year"),
+            ).withColumn(
+                "absolute_error", abs(col("true_year") - col("predicted_year"))
             )
 
-            # Save to a single CSV file with a header, overwriting if it exists
-            output_df.coalesce(1).write.mode("overwrite").option("header", "true").csv(
-                output_path
-            )
-            print("Results saved successfully.")
+            # Append to the CSV file. No header is written to avoid duplicates on append.
+            output_df_formatted.coalesce(1).write.mode("append").csv(output_path)
+
+            print("Results appended successfully.")
+            print(f"Column order: {', '.join(output_df_formatted.columns)}")
         except Exception as e:
             print(
-                f"Error: Could not save results to {output_path}. Detailed error: {e}"
+                f"Error: Could not append results to {output_path}. Detailed error: {e}"
             )
-
-
-# models
 
 
 def run_ridge_regression(training_data, test_data, preproc_stages, output_path):
@@ -132,14 +139,14 @@ def run_mini_batch_gd(training_data, test_data, preproc_stages, output_path):
     )
 
 
-# Execution
 def main():
     parser = argparse.ArgumentParser(
         description="Run a regression model on the Year Prediction MSD dataset using Spark.",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
-        "model",
+        "-m",
+        "--model",
         type=int,
         choices=[1, 2, 3, 4],
         help="The number for the model to run:\n"
@@ -149,16 +156,18 @@ def main():
         "  4: Mini-Batch Gradient Descent",
     )
     parser.add_argument(
+        "-i",
         "--filepath",
         type=str,
         default="YearPredictionMSD.txt",
         help="Path to the input data file (default: YearPredictionMSD.txt).",
     )
     parser.add_argument(
+        "-o",
         "--output",
         type=str,
         default=None,
-        help="Optional path to save the prediction results as a CSV file.",
+        help="Optional path to append the prediction results to a CSV file.",
     )
 
     args = parser.parse_args()
