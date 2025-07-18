@@ -88,4 +88,40 @@ run_random_forest:
 		--output output/results.csv \
 		--tolerance 5.0
 
+run_ridge_regression:
+	mkdir -p ./output
+	poetry run spark-submit \
+		--master local[1] \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		src/year_prediction/ml_models.py \
+		--model 1 \
+		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
+		--output output/results.csv \
+		--tolerance 5.0
+
+run_GBT:
+	mkdir -p ./output
+	poetry run spark-submit \
+		--master local[1] \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		src/year_prediction/ml_models.py \
+		--model 3 \
+		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
+		--output output/results.csv \
+		--tolerance 5.0
+
+run_mini_batch_gd:
+	mkdir -p ./output
+	poetry run spark-submit \
+		--master local[1] \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		src/year_prediction/ml_models.py \
+		--model 4 \
+		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
+		--output output/results.csv \
+		--tolerance 5.0
+
 .PHONY: commit main extract mount_data_init fmt_json init_env
