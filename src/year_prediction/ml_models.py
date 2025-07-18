@@ -203,6 +203,7 @@ def main():
         .getOrCreate()
     )
 
+    spark.sparkContext.setLogLevel("WARNING")
     feature_cols = [f"feature_{i}" for i in range(90)]
     schema = StructType(
         [StructField(LABEL_COL, DoubleType(), True)]
