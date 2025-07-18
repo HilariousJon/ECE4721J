@@ -79,7 +79,6 @@ fmt_json:
 # TODO: remove absolute path in the makefile
 # remain bugs in the mini-batch-gd model
 run_random_forest:
-	mkdir -p ./output
 	poetry run spark-submit \
 		--master local[1] \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
@@ -91,7 +90,6 @@ run_random_forest:
 		--tolerance 5.0
 
 run_ridge_regression:
-	mkdir -p ./output
 	poetry run spark-submit \
 		--master local[1] \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
@@ -103,7 +101,6 @@ run_ridge_regression:
 		--tolerance 5.0
 
 run_GBT:
-	mkdir -p ./output
 	poetry run spark-submit \
 		--master local[1] \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
@@ -115,7 +112,6 @@ run_GBT:
 		--tolerance 5.0
 
 run_mini_batch_gd:
-	mkdir -p ./output
 	poetry run spark-submit \
 		--master local[1] \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
@@ -126,4 +122,5 @@ run_mini_batch_gd:
 		--output results \
 		--tolerance 5.0
 
-.PHONY: commit main extract mount_data_init fmt_json init_env
+.PHONY: commit main extract mount_data_init fmt_json init_env run_random_forest \
+run_ridge_regression run_GBT run_mini_batch_gd aggregate_avro agg_avro year_avro mount_data unmount_data
