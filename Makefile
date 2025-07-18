@@ -68,13 +68,32 @@ convert_avro_to_json:
 		--input ./data/aggregate.avro \
 		--output ./data/artists.jsonl
 
+# build_artists_graph_mr:
+# 	# run the mapreduce job to build the artists graph
+# 	ulimit -v 6000000; \
+# 	cpulimit --limit=400 -- \
+# 	poetry run python3 src/m2/artistsDis/mapreduce/build_artists_graph_mr.py \
+# 	--input ./data/artists.jsonl \
+# 	--output ./data/artists_graph_mr.jsonl \
+# 	--topk 50
+
 build_artists_graph_mr:
-	# run the mapreduce job to build the artists graph
-	ulimit -v 7000000; \
-	timeout 900s cpulimit --limit=400 -- \
-	poetry run python3 src/m2/artistsDis/mapreduce/build_artists_graph_mr.py \
-	--input ./data/artists.jsonl \
-	--output ./data/artists_graph_mr.jsonl \
+	# Stage 1: LSH hashing
+	mkdir -p data/tmp
+	poetry run $(PYTHON) src/m2/artistsDis/mapreduce/build_artists_graph_stage1.py \
+	--num-hash 20 \
+	--seed 42 \
+	< data/artists.jsonl > data/tmp/lsh_buckets.jsonl
+
+	# Stage 2: Top-K in each bucket
+	poetry run $(PYTHON) src/m2/artistsDis/mapreduce/build_artists_graph_stage2.py \
+	--topk 50 \
+	< data/tmp/lsh_buckets.jsonl > data/tmp/raw_neighbors.jsonl
+
+	# Final merge
+	poetry run $(PYTHON) src/m2/artistsDis/mapreduce/merge_neighbors.py \
+	--input data/tmp/raw_neighbors.jsonl \
+	--output data/artists_graph_mr.jsonl \
 	--topk 50
 
 query_artists_distance:
