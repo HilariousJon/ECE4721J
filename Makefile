@@ -76,6 +76,8 @@ fmt_json:
 	cat src/m1/msd_meta.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_meta.avsc
 	cat src/m1/msd_year_prediction.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_year_prediction.avsc
 
+# TODO: remove absolute path in the makefile
+# remain bugs in the mini-batch-gd model
 run_random_forest:
 	mkdir -p ./output
 	poetry run spark-submit \
