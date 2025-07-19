@@ -6,7 +6,7 @@ AVRO_FILE ?= src/m1/songs.avro
 OUTPUT_DIR ?= src/m1/output_h5
 DRILL_PATH ?= ~/mnt/drill
 
-DATA_PATH = src/data/aggregate.avro
+DATA_PATH = ${MAKEFILE_PATH}/src/data/aggregate.avro
 
 
 main:
