@@ -1,23 +1,5 @@
 
 
--- Query to find the shortest song with the highest energy and lowest tempo
-
-SELECT
-  song_id,
-  track_id,
-  title,
-  artist_name,
-  duration,
-  energy,
-  tempo
-FROM dfs.`/Users/aghamatlabakbarzade/Documents/Courses/ECE4721/p1team02/src/m1/data/aggregate.avro`
-WHERE year > 0
-ORDER BY
-  duration    ASC,   -- shortest first
-  energy      DESC,  -- among those, highest energy
-  tempo       ASC    -- among ties, lowest tempo
-LIMIT 1;
-
 -- Query to find the album with the most songs
 SELECT
   release,
