@@ -58,8 +58,6 @@ fmt_json:
 	cat src/m1/msd.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd.avsc
 
 run_drill:
-	@echo "Substuting Data Path..."
-	@sed 's|__DATA_PATH__|$(DATA_PATH)|g' ./src/m2/drill_queries_template.sql > ./src/m2/drill_queries.sql 
 	@echo "Running Drill Queries..."
 	@$(DRILL_PATH)/bin/drill-embedded -f ./src/m2/drill_queries.sql
 	@echo "Removing temporary drill queries file..."
