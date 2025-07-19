@@ -56,6 +56,6 @@ fmt_json:
 
 run_drill:
 	$(DRILL_PATH)/bin/drill-embedded \
-  		-f data/aggregate.avro
+  		-f /src/m2/drillQueries.sql \
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
