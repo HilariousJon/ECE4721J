@@ -1,12 +1,4 @@
 
--- Query to find the earliest and latest year in the dataset
-
-SELECT
-  MIN(year) AS earliest_year,
-  MAX(year) AS latest_year
-FROM dfs.`/Users/aghamatlabakbarzade/Documents/Courses/ECE4721/p1team02/src/m1/data/aggregate.a
-
-WHERE year > 0;
 
 -- Query to find the shortest song with the highest energy and lowest tempo
 
