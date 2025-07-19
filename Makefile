@@ -60,7 +60,5 @@ fmt_json:
 run_drill:
 	@echo "Running Drill Queries..."
 	@$(DRILL_PATH)/bin/drill-embedded -f ./src/m2/drill_queries.sql
-	@echo "Removing temporary drill queries file..."
-	@rm ./src/m2/drill_queries.sql 
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
