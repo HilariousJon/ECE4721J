@@ -2,6 +2,8 @@ PYTHON=python3
 
 AVRO_FILE ?= src/m1/songs.avro
 OUTPUT_DIR ?= src/m1/output_h5
+DRILL_PATH ?= ~/mnt/drill
+
 
 main:
 	$(PYTHON) src/m1/compress.py 
@@ -53,7 +55,7 @@ fmt_json:
 	cat src/m1/msd.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd.avsc
 
 run_drill:
-	~/Downloads/apache-drill-1.22.0/bin/drill-embedded \
-  		-f /Users/aghamatlabakbarzade/Documents/Courses/ECE4721/p1team02/src/m2/drillQuerries.sql
+	$(DRILL_PATH)/bin/drill-embedded \
+  		-f data/aggregate.avro
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
