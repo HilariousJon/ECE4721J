@@ -5,7 +5,7 @@
 SELECT
   MIN(year) AS earliest_year,
   MAX(year) AS latest_year
-FROM dfs.`__PROJECT_PATH__`
+FROM dfs.`__PROJECT_PATH__data/aggregate.avro`
 
 WHERE year > 0;
 
@@ -19,7 +19,7 @@ SELECT
   duration,
   energy,
   tempo
-FROM dfs.`__PROJECT_PATH__`
+FROM dfs.`__PROJECT_PATH__data/aggregate.avro`
 WHERE year > 0
 ORDER BY
   duration    ASC,   -- shortest first
@@ -31,7 +31,7 @@ LIMIT 1;
 SELECT
   release,
   COUNT(*) AS song_per_album
-FROM dfs.`__PROJECT_PATH__`
+FROM dfs.`__PROJECT_PATH__data/aggregate.avro`
 GROUP BY
   release
 ORDER BY
@@ -43,7 +43,7 @@ LIMIT 1;
 SELECT
   duration,
   artist_name
-FROM dfs.`__PROJECT_PATH__`
+FROM dfs.`__PROJECT_PATH__data/aggregate.avro`
 ORDER BY
   duration DESC
 LIMIT 1;
