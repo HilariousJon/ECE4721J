@@ -52,4 +52,8 @@ commit:
 fmt_json:
 	cat src/m1/msd.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd.avsc
 
+run_drill:
+	~/Downloads/apache-drill-1.22.0/bin/drill-embedded \
+  		-f /Users/aghamatlabakbarzade/Documents/Courses/ECE4721/p1team02/src/m2/drillQuerries.sql
+
 .PHONY: commit main extract mount_data_init fmt_json init_env
