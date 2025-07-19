@@ -1,5 +1,7 @@
 PYTHON=python3
 
+MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+
 AVRO_FILE ?= src/m1/songs.avro
 OUTPUT_DIR ?= src/m1/output_h5
 DRILL_PATH ?= ~/mnt/drill
@@ -57,7 +59,7 @@ fmt_json:
 	cat src/m1/msd.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd.avsc
 
 run_drill:
-	$(DRILL_PATH)/bin/drill-embedded \
-  		-f  ./src/m2/drillQueries.SQL \
+	@echo "Substuting Data Path..."
+	@sed 's|__DATA_PATH__|$(DATA_PATH)|g' ./src/m2/drillQueries.SQL | $(DRILL_PATH)/bin/drill-embedded -f
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
