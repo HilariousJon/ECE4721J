@@ -1,0 +1,116 @@
+{
+  "namespace": "msd_meta.avro",
+  "type": "record",
+  "name": "MSD_YEAR",
+  "doc": "A comprehensive schema for MSD songs, tailored for ECE472 Project 1, including detailed features for advanced analysis.",
+  "fields": [
+    {
+      "name": "song_id",
+      "type": "string",
+      "doc": "Unique identifier for the song (Echo Nest ID)."
+    },
+    {
+      "name": "track_id",
+      "type": "string",
+      "doc": "Unique identifier for the track (MSD ID)."
+    },
+    {
+      "name": "title",
+      "type": [
+        "string",
+        "null"
+      ],
+      "doc": "Title of the song."
+    },
+    {
+      "name": "release",
+      "type": [
+        "string",
+        "null"
+      ],
+      "doc": "The album/release name of the song."
+    },
+    {
+      "name": "artist_id",
+      "type": "string",
+      "doc": "Unique identifier for the artist."
+    },
+    {
+      "name": "artist_name",
+      "type": [
+        "string",
+        "null"
+      ],
+      "doc": "Name of the artist/band."
+    },
+    {
+      "name": "artist_location",
+      "type": [
+        "string",
+        "null"
+      ],
+      "doc": "Reported location of the artist."
+    },
+    {
+      "name": "year",
+      "type": "int",
+      "doc": "Release year of the song. Note: 0 if year is unknown."
+    },
+    {
+      "name": "duration",
+      "type": "double",
+      "doc": "Duration of the song in seconds."
+    },
+    {
+      "name": "loudness",
+      "type": "double",
+      "doc": "Overall loudness in dB."
+    },
+    {
+      "name": "tempo",
+      "type": "double",
+      "doc": "Overall tempo in BPM."
+    },
+    {
+      "name": "energy",
+      "type": "double",
+      "doc": "Perceptual measure of intensity and activity (0.0 to 1.0)."
+    },
+    {
+      "name": "danceability",
+      "type": "double",
+      "doc": "How suitable a track is for dancing (0.0 to 1.0)."
+    },
+    {
+      "name": "key",
+      "type": "int",
+      "doc": "The key the track is in (0=C, 1=C#, etc.)."
+    },
+    {
+      "name": "mode",
+      "type": "int",
+      "doc": "Modality of a track (major=1, minor=0)."
+    },
+    {
+      "name": "time_signature",
+      "type": "int",
+      "doc": "Number of beats per bar."
+    },
+    {
+      "name": "song_hotttnesss",
+      "type": [
+        "double",
+        "null"
+      ],
+      "doc": "Popularity measure of the song."
+    },
+    {
+      "name": "segments_timbre",
+      "type": {
+        "type": "array",
+        "items": "double"
+      },
+      "doc": "timbre features for each song, texture features (MFCC+PCA-like), processed for year prediction functions."
+    }
+  ]
+}
