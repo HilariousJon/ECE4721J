@@ -60,6 +60,10 @@ fmt_json:
 
 run_drill:
 	@echo "Substuting Data Path..."
-	@sed 's|__DATA_PATH__|$(DATA_PATH)|g' ./src/m2/drillQueries.SQL | $(DRILL_PATH)/bin/drill-embedded -f
+	@sed 's|__DATA_PATH__|$(DATA_PATH)|g' ./src/m2/drillQueriesTemplate.SQL > ./src/m2/drillQueries.SQL 
+	@echo "Running Drill Queries..."
+	@$(DRILL_PATH)/bin/drill-embedded -f ./src/m2/drillQueries.SQL
+	@echo "Removing temporary drill queries file..."
+	@rm ./src/m2/drillQueries.SQL 
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
