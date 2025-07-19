@@ -58,7 +58,8 @@ fmt_json:
 	cat src/m1/msd.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd.avsc
 
 run_drill:
-	@echo "Running Drill Queries..."
-	@$(DRILL_PATH)/bin/drill-embedded -f ./src/m2/drill_queries.sql
+	sed 's|__PROJECT_PATH__|$(MAKEFILE_PATH)|g' src/m2/drill_queries.sql \
+	| $(DRILL_PATH)/bin/drill-embedded -f /dev/stdin
+
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
