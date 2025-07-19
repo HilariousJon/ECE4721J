@@ -42,7 +42,7 @@ LIMIT 1;
 -- Query to find the longest song in the dataset
 SELECT
   duration,
-  artist_name,
+  artist_name
 FROM dfs.`/Users/aghamatlabakbarzade/Documents/Courses/ECE4721/p1team02/src/m1/data/aggregate.avro`
 ORDER BY
   duration DESC
