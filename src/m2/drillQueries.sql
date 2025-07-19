@@ -5,7 +5,7 @@
 SELECT
   MIN(year) AS earliest_year,
   MAX(year) AS latest_year
-FROM dfs.`/Users/aghamatlabakbarzade/Documents/Courses/ECE4721/p1team02/src/m1/data/aggregate.avro`
+FROM dfs.`__DATA_PATH__`
 
 WHERE year > 0;
 
@@ -19,7 +19,7 @@ SELECT
   duration,
   energy,
   tempo
-FROM dfs.`/Users/aghamatlabakbarzade/Documents/Courses/ECE4721/p1team02/src/m1/data/aggregate.avro`
+FROM dfs.`_DATA_PATH__`
 WHERE year > 0
 ORDER BY
   duration    ASC,   -- shortest first
@@ -31,7 +31,7 @@ LIMIT 1;
 SELECT
   release,
   COUNT(*) AS song_per_album
-FROM dfs.`/Users/aghamatlabakbarzade/Documents/Courses/ECE4721/p1team02/src/m1/data/aggregate.avro`
+FROM dfs.`_DATA_PATH__`
 GROUP BY
   release
 ORDER BY
@@ -43,7 +43,7 @@ LIMIT 1;
 SELECT
   duration,
   artist_name
-FROM dfs.`/Users/aghamatlabakbarzade/Documents/Courses/ECE4721/p1team02/src/m1/data/aggregate.avro`
+FROM dfs.`_DATA_PATH__`
 ORDER BY
   duration DESC
 LIMIT 1;
