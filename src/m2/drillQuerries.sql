@@ -1,17 +1,5 @@
 
 
--- Query to find the album with the most songs
-SELECT
-  release,
-  COUNT(*) AS song_per_album
-FROM dfs.`/Users/aghamatlabakbarzade/Documents/Courses/ECE4721/p1team02/src/m1/data/aggregate.avro`
-GROUP BY
-  release
-ORDER BY
-  song_per_album DESC
-LIMIT 1;
-
-
 -- Query to find the longest song in the dataset
 SELECT
   duration,
