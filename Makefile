@@ -1,7 +1,12 @@
 PYTHON=python3
 
+MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
 AVRO_FILE ?= src/m1/songs.avro
 OUTPUT_DIR ?= src/m1/output_h5
+DRILL_PATH ?= ~/mnt/drill
+
+
 
 main:
 	$(PYTHON) src/m1/compress.py 
@@ -75,5 +80,10 @@ commit:
 fmt_json:
 	cat src/m1/msd_meta.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_meta.avsc
 	cat src/m1/msd_year_prediction.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_year_prediction.avsc
+
+run_drill:
+	sed 's|__PROJECT_PATH__|$(MAKEFILE_PATH)|g' src/m2/drill_queries.sql \
+	| $(DRILL_PATH)/bin/drill-embedded -f /dev/stdin
+
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
