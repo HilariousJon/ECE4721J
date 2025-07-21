@@ -141,7 +141,7 @@ def run_xgboost(training_data, test_data, preproc_stages, output_path, tolerance
     print("\n--- Training XGBoost Regressor Model ---")
 
     xgboost = SparkXGBRegressor(
-        featuresCol="features",
+        features_col="features",
         labelCol=LABEL_COL,
         n_estimators=100,
         max_depth=5,
