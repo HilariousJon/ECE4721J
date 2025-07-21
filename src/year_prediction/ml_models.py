@@ -8,6 +8,7 @@ from pyspark.ml.feature import VectorAssembler, StandardScaler
 from pyspark.ml.regression import LinearRegression, RandomForestRegressor, GBTRegressor
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.mllib.regression import LabeledPoint, LinearRegressionWithSGD
+from pyspark.mllib.linalg import Vectors
 
 LABEL_COL = "year"
 
@@ -122,7 +123,7 @@ def run_mini_batch_gd(training_data, test_data, preproc_stages, output_path, tol
     processed_test_df = preprocessing_model.transform(test_data)
 
     train_rdd = processed_train_df.select(LABEL_COL, "features").rdd.map(
-        lambda row: LabeledPoint(row[LABEL_COL], row.features)
+        lambda row: LabeledPoint(row[LABEL_COL], Vectors.dense(row.features.toArray()))
     )
 
     model = LinearRegressionWithSGD.train(
