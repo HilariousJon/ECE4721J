@@ -119,7 +119,7 @@ def run_linear_regression_ml(
     Trains and evaluates a Linear Regression model using the modern pyspark.ml API.
     """
     print("\n--- Training Linear Regression Model (ML API) ---")
-    
+
     lr = LinearRegression(featuresCol="features", labelCol=LABEL_COL)
 
     # The entire process is clean and operates on DataFrames.
