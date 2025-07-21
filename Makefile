@@ -134,4 +134,4 @@ run_xgboost:
 		--tolerance 5.0
 
 .PHONY: commit main extract mount_data_init fmt_json init_env run_random_forest \
-run_ridge_regression run_GBT run_mini_batch_gd aggregate_avro agg_avro year_avro mount_data unmount_data
+run_ridge_regression run_GBT run_mini_batch_gd aggregate_avro agg_avro year_avro mount_data unmount_data run_xgboost
