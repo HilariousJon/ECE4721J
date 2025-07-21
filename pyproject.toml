@@ -14,6 +14,7 @@ dependencies = [
     "tqdm>=4.66.4",
     "tables>=3.9.2",
     "loguru>=0.7.2",
+    "xgboost (>=3.0.2,<4.0.0)",
 ]
 
 
