@@ -131,7 +131,7 @@ def run_mini_batch_gd(training_data, test_data, preproc_stages, output_path, tol
     )
 
     test_features_rdd = processed_test_df.select("features").rdd.map(
-        lambda row: row.features
+        lambda row: Vectors.dense(row.features.toArray())
     )
     predictions_rdd = model.predict(test_features_rdd)
 
