@@ -9,7 +9,7 @@ from pyspark.ml.regression import LinearRegression, RandomForestRegressor, GBTRe
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.mllib.regression import LabeledPoint, LinearRegressionWithSGD
 from pyspark.mllib.linalg import Vectors
-from spark_xgboost import XGBoostRegressor
+from xgboost.spark import XGBoostRegressor
 
 LABEL_COL = "year"
 
