@@ -9,7 +9,7 @@ from pyspark.ml.regression import LinearRegression, RandomForestRegressor, GBTRe
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.mllib.regression import LabeledPoint, LinearRegressionWithSGD
 from pyspark.mllib.linalg import Vectors
-from xgboost.spark import XGBoostRegressor
+from xgboost.spark import SparkXGBRegressor
 
 LABEL_COL = "year"
 
@@ -141,17 +141,17 @@ from xgboost.spark import XGBoostRegressor
 
 def run_xgboost(training_data, test_data, preproc_stages, output_path, tolerance):
     """
-    Trains and evaluates an XGBoost Regressor model using the official xgboost library.
+    Trains and evaluates an XGBoost Regressor model using the official xgboost library (v2.0.0+).
     """
     print("\n--- Training XGBoost Regressor Model ---")
-    xgboost = XGBoostRegressor(
+
+    xgboost = SparkXGBRegressor(
         featuresCol="features",
         labelCol=LABEL_COL,
         n_estimators=100,
         max_depth=5,
         seed=42,
     )
-
     pipeline = Pipeline(stages=preproc_stages + [xgboost])
 
     print("Fitting XGBoost pipeline...")
@@ -178,7 +178,7 @@ def main():
         "  2: Random Forest\n"
         "  3: GBT (Gradient-Boosted Trees)\n"
         "  4: Mini-Batch Gradient Descent\n"
-        "  5: XGBoost Regressor (requires spark_xgboost package)"
+        "  5: XGBoost Regressor (requires spark_xgboost package)",
     )
     parser.add_argument(
         "-i",
