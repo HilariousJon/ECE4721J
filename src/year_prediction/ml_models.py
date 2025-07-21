@@ -112,38 +112,25 @@ def run_gbt(training_data, test_data, preproc_stages, output_path, tolerance):
     )
 
 
-def run_mini_batch_gd(training_data, test_data, preproc_stages, output_path, tolerance):
-    """Trains and evaluates a Linear Regression model with Mini-Batch Gradient Descent."""
-    print("\n--- Training Linear Regression with Mini-Batch Gradient Descent ---")
-    # Note: This model uses the older RDD-based API (spark.mllib).
+def run_linear_regression_ml(
+    training_data, test_data, preproc_stages, output_path, tolerance
+):
+    """
+    Trains and evaluates a Linear Regression model using the modern pyspark.ml API.
+    """
+    print("\n--- Training Linear Regression Model (ML API) ---")
+    
+    lr = LinearRegression(featuresCol="features", labelCol=LABEL_COL)
 
-    preprocessing_model = Pipeline(stages=preproc_stages).fit(training_data)
-    processed_train_df = preprocessing_model.transform(training_data)
-    processed_test_df = preprocessing_model.transform(test_data)
+    # The entire process is clean and operates on DataFrames.
+    pipeline = Pipeline(stages=preproc_stages + [lr])
 
-    train_rdd = processed_train_df.select(LABEL_COL, "features").rdd.map(
-        lambda row: LabeledPoint(row[LABEL_COL], Vectors.dense(row.features.toArray()))
-    )
+    model = pipeline.fit(training_data)
 
-    model = LinearRegressionWithSGD.train(
-        train_rdd, iterations=100, step=0.1, miniBatchFraction=0.1
-    )
-
-    test_features_rdd = processed_test_df.select("features").rdd.map(
-        lambda row: Vectors.dense(row.features.toArray())
-    )
-    predictions_rdd = model.predict(test_features_rdd)
-
-    predictions_and_labels_rdd = predictions_rdd.zip(
-        processed_test_df.select(LABEL_COL).rdd.map(lambda row: row[LABEL_COL])
-    )
-
-    predictions_df = predictions_and_labels_rdd.map(
-        lambda lp: Row(prediction=float(lp[0]), year=float(lp[1]))
-    ).toDF()
+    predictions = model.transform(test_data)
 
     evaluate_and_print_metrics(
-        "Linear Regression (Mini-Batch GD)", predictions_df, output_path, tolerance
+        "Linear Regression (ML API)", predictions, output_path, tolerance
     )
 
 
@@ -195,7 +182,7 @@ def main():
         1: ("Ridge", run_ridge_regression),
         2: ("RandomForest", run_random_forest),
         3: ("GBT", run_gbt),
-        4: ("MiniBatchGD", run_mini_batch_gd),
+        4: ("MiniBatchGD", run_linear_regression_ml),
     }
 
     model_name, model_func = model_map[model_number]
