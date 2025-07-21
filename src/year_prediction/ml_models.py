@@ -144,7 +144,7 @@ def run_xgboost(training_data, test_data, preproc_stages, output_path, tolerance
         features_col="features",
         label_col=LABEL_COL,
         n_estimators=100,
-        max_depth=12,
+        max_depth=5,
         seed=42,
     )
     pipeline = Pipeline(stages=preproc_stages + [xgboost])
