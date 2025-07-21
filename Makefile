@@ -84,7 +84,6 @@ build_artists_graph_mr:
 	--num-hash 20 \
 	--seed 42 \
 	< data/artists.jsonl | \
-	sed -E 's/^null\t"(.*)"$$/\1/' | \
 	sed 's/\\//g' > data/tmp/lsh_buckets.jsonl
 
 	# Stage 2: Top-K in each bucket
