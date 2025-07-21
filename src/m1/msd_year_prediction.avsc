@@ -16,19 +16,18 @@
     },
     {
       "name": "title",
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "doc": "Title of the song."
     },
     {
       "name": "release",
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "doc": "The album/release name of the song."
+    },
+    {
+      "name": "release_7digitalid",
+      "type": ["int", "null"],
+      "doc": "The album/release song id."
     },
     {
       "name": "artist_id",
@@ -37,18 +36,12 @@
     },
     {
       "name": "artist_name",
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "doc": "Name of the artist/band."
     },
     {
       "name": "artist_location",
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "doc": "Reported location of the artist."
     },
     {
@@ -98,10 +91,7 @@
     },
     {
       "name": "song_hotttnesss",
-      "type": [
-        "double",
-        "null"
-      ],
+      "type": ["double", "null"],
       "doc": "Popularity measure of the song."
     },
     {
