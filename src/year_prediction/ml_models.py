@@ -134,11 +134,6 @@ def run_linear_regression_ml(
         "Linear Regression (ML API)", predictions, output_path, tolerance
     )
 
-
-# 在脚本顶部，使用这个正确的 import
-from xgboost.spark import XGBoostRegressor
-
-
 def run_xgboost(training_data, test_data, preproc_stages, output_path, tolerance):
     """
     Trains and evaluates an XGBoost Regressor model using the official xgboost library (v2.0.0+).
