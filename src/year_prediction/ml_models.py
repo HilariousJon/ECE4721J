@@ -9,6 +9,7 @@ from pyspark.ml.regression import LinearRegression, RandomForestRegressor, GBTRe
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.mllib.regression import LabeledPoint, LinearRegressionWithSGD
 from pyspark.mllib.linalg import Vectors
+from spark_xgboost import XGBoostRegressor
 
 LABEL_COL = "year"
 
@@ -134,6 +135,34 @@ def run_linear_regression_ml(
     )
 
 
+# 在脚本顶部，使用这个正确的 import
+from xgboost.spark import XGBoostRegressor
+
+
+def run_xgboost(training_data, test_data, preproc_stages, output_path, tolerance):
+    """
+    Trains and evaluates an XGBoost Regressor model using the official xgboost library.
+    """
+    print("\n--- Training XGBoost Regressor Model ---")
+    xgboost = XGBoostRegressor(
+        featuresCol="features",
+        labelCol=LABEL_COL,
+        n_estimators=100,
+        max_depth=5,
+        seed=42,
+    )
+
+    pipeline = Pipeline(stages=preproc_stages + [xgboost])
+
+    print("Fitting XGBoost pipeline...")
+    model = pipeline.fit(training_data)
+
+    print("Making predictions...")
+    predictions = model.transform(test_data)
+
+    evaluate_and_print_metrics("XGBoost Regressor", predictions, output_path, tolerance)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run a regression model on the Year Prediction MSD dataset using Spark.",
@@ -143,12 +172,13 @@ def main():
         "-m",
         "--model",
         type=int,
-        choices=[1, 2, 3, 4],
+        choices=[1, 2, 3, 4, 5],
         help="The number for the model to run:\n"
         "  1: Ridge Regression\n"
         "  2: Random Forest\n"
         "  3: GBT (Gradient-Boosted Trees)\n"
-        "  4: Mini-Batch Gradient Descent",
+        "  4: Mini-Batch Gradient Descent\n"
+        "  5: XGBoost Regressor (requires spark_xgboost package)"
     )
     parser.add_argument(
         "-i",
@@ -183,6 +213,7 @@ def main():
         2: ("RandomForest", run_random_forest),
         3: ("GBT", run_gbt),
         4: ("MiniBatchGD", run_linear_regression_ml),
+        5: ("XGBoost", run_xgboost),
     }
 
     model_name, model_func = model_map[model_number]
