@@ -30,11 +30,12 @@ LIMIT 6;
 
 -- Query to find the album with the most songs
 SELECT
-  release,
-  COUNT(release) AS song_per_album
+  release as album_name,
+  release_7digitalid as album_id,
+  COUNT(release_7digitalid) AS song_per_album
 FROM dfs.`__PROJECT_PATH__data/aggregate.avro`
 GROUP BY
-  release
+  release, release_7digitalid
 ORDER BY
   song_per_album DESC
 LIMIT 1;
