@@ -143,8 +143,8 @@ def run_xgboost(training_data, test_data, preproc_stages, output_path, tolerance
     xgboost = SparkXGBRegressor(
         features_col="features",
         label_col=LABEL_COL,
-        n_estimators=500,
-        max_depth=5,
+        n_estimators=100,
+        max_depth=10,
         seed=42,
     )
     pipeline = Pipeline(stages=preproc_stages + [xgboost])
