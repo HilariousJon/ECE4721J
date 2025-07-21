@@ -1,6 +1,6 @@
 import sys
 import argparse
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, Row
 from pyspark.sql.types import StructType, StructField, DoubleType
 from pyspark.sql.functions import abs, when, col, lit, current_timestamp
 from pyspark.ml import Pipeline
@@ -118,7 +118,6 @@ def run_mini_batch_gd(training_data, test_data, preproc_stages, output_path, tol
     # Note: This model uses the older RDD-based API (spark.mllib).
 
     preprocessing_model = Pipeline(stages=preproc_stages).fit(training_data)
-
     processed_train_df = preprocessing_model.transform(training_data)
     processed_test_df = preprocessing_model.transform(test_data)
 
@@ -138,7 +137,10 @@ def run_mini_batch_gd(training_data, test_data, preproc_stages, output_path, tol
     predictions_and_labels_rdd = predictions_rdd.zip(
         processed_test_df.select(LABEL_COL).rdd.map(lambda row: row[LABEL_COL])
     )
-    predictions_df = predictions_and_labels_rdd.toDF(["prediction", LABEL_COL])
+
+    predictions_df = predictions_and_labels_rdd.map(
+        lambda lp: Row(prediction=float(lp[0]), year=float(lp[1]))
+    ).toDF()
 
     evaluate_and_print_metrics(
         "Linear Regression (Mini-Batch GD)", predictions_df, output_path, tolerance
