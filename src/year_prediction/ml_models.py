@@ -142,7 +142,7 @@ def run_xgboost(training_data, test_data, preproc_stages, output_path, tolerance
 
     xgboost = SparkXGBRegressor(
         features_col="features",
-        labelCol=LABEL_COL,
+        label_col=LABEL_COL,
         n_estimators=100,
         max_depth=5,
         seed=42,
