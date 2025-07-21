@@ -90,7 +90,7 @@ def run_random_forest(training_data, test_data, preproc_stages, output_path, tol
     """Trains and evaluates a Random Forest Regressor model."""
     print("\n--- Training Random Forest Model ---")
     rf = RandomForestRegressor(
-        featuresCol="features", labelCol=LABEL_COL, numTrees=100, maxDepth=10, seed=42
+        featuresCol="features", labelCol=LABEL_COL, numTrees=100, maxDepth=100, seed=42
     )
     pipeline = Pipeline(stages=preproc_stages + [rf])
     model = pipeline.fit(training_data)
