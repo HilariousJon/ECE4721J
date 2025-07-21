@@ -78,12 +78,14 @@ convert_avro_to_json:
 # 	--topk 50
 
 build_artists_graph_mr:
-	# Stage 1: LSH hashing
+	# Stage 1: LSH hashing + clean JSON format
 	mkdir -p data/tmp
 	poetry run $(PYTHON) src/m2/artistsDis/mapreduce/build_artists_graph_stage1.py \
 	--num-hash 20 \
 	--seed 42 \
-	< data/artists.jsonl > data/tmp/lsh_buckets.jsonl
+	< data/artists.jsonl | \
+	sed -E 's/^null\t"(.*)"$$/\1/' | \
+	sed 's/\\//g' > data/tmp/lsh_buckets.jsonl
 
 	# Stage 2: Top-K in each bucket
 	poetry run $(PYTHON) src/m2/artistsDis/mapreduce/build_artists_graph_stage2.py \
