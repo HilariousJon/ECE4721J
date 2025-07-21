@@ -60,7 +60,7 @@ build_artists_graph_spark:
 		src/m2/artistsDis/spark/build_artists_graph_spark.py \
 		--input ./data/aggregate.avro \
 		--output ./data/artists_graph \
-		--threshold 0.9
+		--threshold 0.5
 
 convert_avro_to_json:
 	# convert the avro file to jsonl format
@@ -105,8 +105,8 @@ query_artists_distance:
 		--conf spark.pyspark.python=python3 \
 		src/m2/artistsDis/spark/query_artist_distance.py \
 		--graph ./data/artists_graph \
-		--start ARJNIUY12298900C91 \
-		--end TRAAAAV128F421A322
+		--start b\'AR00JIO1187B9A5A15\' \
+		--end b\'AR8KJG41187B9AF8EC\'
 
 commit:
 	git add -A; \

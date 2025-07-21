@@ -56,8 +56,8 @@ def build_artist_graph(input_path, output_path, distance_threshold):
 
     # Build adjacency list: artist_id -> list of neighbor_id
     edges = filtered.select(
-        col("datasetA.artist_id").alias("artist_id"),
-        col("datasetB.artist_id").alias("neighbor_id")
+        col("datasetA.artist_id").cast("string").alias("artist_id"),
+        col("datasetB.artist_id").cast("string").alias("neighbor_id")
     ).groupBy("artist_id") \
      .agg(collect_list("neighbor_id").alias("neighbors"))
 
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", required=True)
     parser.add_argument("-o", "--output", required=True)
-    parser.add_argument("-t", "--threshold", type=float, default=0.9)
+    parser.add_argument("-t", "--threshold", type=float, default=0.5)
     args = parser.parse_args()
 
     build_artist_graph(args.input, args.output, args.threshold)
