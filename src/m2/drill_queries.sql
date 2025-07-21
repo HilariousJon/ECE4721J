@@ -26,7 +26,7 @@ ORDER BY
   duration    ASC,   -- among those, shortest duration
   energy      DESC,  -- among those, highest energy
   tempo       ASC    -- among ties, lowest tempo
-LIMIT 1;
+LIMIT 6;
 
 -- Query to find the album with the most songs
 SELECT
