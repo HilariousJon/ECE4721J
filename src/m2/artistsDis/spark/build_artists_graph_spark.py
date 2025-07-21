@@ -6,7 +6,7 @@ from pyspark.sql.window import Window
 from pyspark.ml.feature import VectorAssembler, StandardScaler, PCA, BucketedRandomProjectionLSH
 from pyspark.sql.functions import expr
 
-def build_artist_graph(input_path, output_path, k_neighbors):
+def build_artist_graph(input_path, output_path, distance_threshold):
     spark = SparkSession.builder.appName("ArtistGraphWithLSH").getOrCreate()
 
     # Load and clean
@@ -46,21 +46,16 @@ def build_artist_graph(input_path, output_path, k_neighbors):
     lsh_model = lsh.fit(pca_df)
     lsh_df = lsh_model.transform(pca_df)
 
-    # Approximate self-join
-    joined = lsh_model.approxSimilarityJoin(
+    # Approximate self-join with threshold filtering
+    filtered = lsh_model.approxSimilarityJoin(
         datasetA=pca_df,
         datasetB=pca_df,
-        threshold=float("inf"),  # no distance filter here
+        threshold=distance_threshold,
         distCol="distance"
     ).filter(col("datasetA.artist_id") != col("datasetB.artist_id"))
 
-    # Select top-K nearest neighbors for each artist
-    window = Window.partitionBy("datasetA.artist_id").orderBy(col("distance"))
-    topk = joined.withColumn("rank", row_number().over(window)) \
-                 .filter(col("rank") <= k_neighbors)
-
     # Build adjacency list: artist_id -> list of neighbor_id
-    edges = topk.select(
+    edges = filtered.select(
         col("datasetA.artist_id").alias("artist_id"),
         col("datasetB.artist_id").alias("neighbor_id")
     ).groupBy("artist_id") \
@@ -79,7 +74,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", required=True)
     parser.add_argument("-o", "--output", required=True)
-    parser.add_argument("-k", "--topk", type=int, default=50)
+    parser.add_argument("-t", "--threshold", type=float, default=0.9)
     args = parser.parse_args()
 
-    build_artist_graph(args.input, args.output, args.topk)
+    build_artist_graph(args.input, args.output, args.threshold)

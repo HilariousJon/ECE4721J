@@ -60,7 +60,7 @@ build_artists_graph_spark:
 		src/m2/artistsDis/spark/build_artists_graph_spark.py \
 		--input ./data/aggregate.avro \
 		--output ./data/artists_graph \
-		--topk 50
+		--threshold 0.9
 
 convert_avro_to_json:
 	# convert the avro file to jsonl format
