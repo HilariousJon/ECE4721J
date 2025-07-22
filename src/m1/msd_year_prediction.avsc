@@ -26,7 +26,7 @@
     },
     {
       "name": "release_7digitalid",
-      "type": ["int", "null"],
+      "type": "int",
       "doc": "The album/release song id."
     },
     {

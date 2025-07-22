@@ -34,7 +34,7 @@ SELECT
   release_7digitalid as album_id,
   COUNT(release_7digitalid) AS song_per_album
 FROM dfs.`__PROJECT_PATH__data/aggregate.avro`
-WHERE release_7digitalid IS NOT NULL
+WHERE release_7digitalid <> -1
 GROUP BY
   release, release_7digitalid
 ORDER BY
