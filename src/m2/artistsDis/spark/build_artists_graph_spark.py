@@ -8,6 +8,9 @@ from pyspark.sql.functions import expr
 
 def build_artist_graph(input_path, output_path, distance_threshold):
     spark = SparkSession.builder.appName("ArtistGraphWithLSH").getOrCreate()
+    spark.sparkContext.setLogLevel("ERROR")
+
+    start_time = time.time()
 
     # Load and clean
     artist_df = (
@@ -30,13 +33,14 @@ def build_artist_graph(input_path, output_path, distance_threshold):
     scaled_df = scaler.fit(features_df).transform(features_df)
 
     # PCA
-    start_time = time.time()
+    print("Performing PCA...")
     pca = PCA(k=3, inputCol="scaled_features", outputCol="pca_vector")
     pca_model = pca.fit(scaled_df)
     variance = pca_model.explainedVariance
     pca_df = pca_model.transform(scaled_df).select("artist_id", "pca_vector")
 
     # Use LSH to find approximate nearest neighbors
+    print("Building LSH model...")
     lsh = BucketedRandomProjectionLSH(
         inputCol="pca_vector",
         outputCol="hashes",
@@ -47,14 +51,16 @@ def build_artist_graph(input_path, output_path, distance_threshold):
     lsh_df = lsh_model.transform(pca_df)
 
     # Approximate self-join with threshold filtering
+    print("Finding approximate neighbors...")
     filtered = lsh_model.approxSimilarityJoin(
-        datasetA=pca_df,
-        datasetB=pca_df,
+        datasetA=lsh_df,
+        datasetB=lsh_df,
         threshold=distance_threshold,
         distCol="distance"
     ).filter(col("datasetA.artist_id") != col("datasetB.artist_id"))
 
     # Build adjacency list: artist_id -> list of neighbor_id
+    print("Building adjacency list...")
     edges = filtered.select(
         col("datasetA.artist_id").cast("string").alias("artist_id"),
         col("datasetB.artist_id").cast("string").alias("neighbor_id")
