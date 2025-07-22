@@ -108,6 +108,23 @@ query_artists_distance:
 		--start b\'AR00JIO1187B9A5A15\' \
 		--end b\'AR8KJG41187B9AF8EC\'
 
+build_songs_graph:
+	# run the spark job to build the songs graph
+	poetry run spark-submit \
+		--master local[4] \
+		--conf spark.pyspark.driver.python=python3 \
+		--conf spark.pyspark.python=python3 \
+		--driver-cores 2 \
+		--driver-memory 3g \
+		--executor-cores 1 \
+		--num-executors 2 \
+		--executor-memory 2g \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/songRec/build_songs_graph.py \
+		--input ./year-data/aggregate_year_prediction.avro \
+		--output ./data/songs_graph \
+		--threshold 0.5
+
 commit:
 	git add -A; \
 	git commit -m "chore(p1m2): auto backup [build joj]" --allow-empty && git push
