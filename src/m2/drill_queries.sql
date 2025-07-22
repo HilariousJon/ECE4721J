@@ -20,20 +20,23 @@ SELECT
   energy,
   tempo
 FROM dfs.`__PROJECT_PATH__data/aggregate.avro`
-WHERE year > 0
+WHERE year > 0 AND song_hotttnesss <> 'NaN'
 ORDER BY
-  duration    ASC,   -- shortest first
+  song_hotttnesss DESC, -- highest hotttnesss first
+  duration    ASC,   -- among those, shortest duration
   energy      DESC,  -- among those, highest energy
   tempo       ASC    -- among ties, lowest tempo
-LIMIT 1;
+LIMIT 6;
 
 -- Query to find the album with the most songs
 SELECT
-  release,
-  COUNT(*) AS song_per_album
+  release as album_name,
+  release_7digitalid as album_id,
+  COUNT(release_7digitalid) AS song_per_album
 FROM dfs.`__PROJECT_PATH__data/aggregate.avro`
+WHERE release_7digitalid <> -1
 GROUP BY
-  release
+  release, release_7digitalid
 ORDER BY
   song_per_album DESC
 LIMIT 1;

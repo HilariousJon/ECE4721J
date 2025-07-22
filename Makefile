@@ -83,7 +83,7 @@ fmt_json:
 
 run_drill:
 	sed 's|__PROJECT_PATH__|$(MAKEFILE_PATH)|g' src/m2/drill_queries.sql \
-	| $(DRILL_PATH)/bin/drill-embedded -f /dev/stdin
+	| $(DRILL_HOME)/bin/drill-embedded -f /dev/stdin
 
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
