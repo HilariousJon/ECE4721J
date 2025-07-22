@@ -44,7 +44,7 @@ def build_song_graph(input_path, output_path, distance_threshold):
     song_df = song_df.withColumn("cov_upper", col("parsed.cov_upper"))
 
     # ----------------------------
-    # Step 2: Convert covariance vector to matrix and compute Σ^{-1/2}
+    # Step 2: Convert covariance vector to matrix and compute Sigma^{-1/2}
     # ----------------------------
 
     def cov_upper_to_full(cov_upper):
@@ -64,14 +64,14 @@ def build_song_graph(input_path, output_path, distance_threshold):
     # Regularize in case of singular matrix
     cov += np.eye(12) * 1e-6
 
-    # Compute Σ^{-1/2} via Cholesky
+    # Compute Sigma^{-1/2} via Cholesky
     cov_inv_sqrt = np.linalg.inv(np.linalg.cholesky(cov)).T
 
     # Broadcast the inverse square root to workers
     broadcast_inv_sqrt = spark.sparkContext.broadcast(cov_inv_sqrt)
 
     # ----------------------------
-    # Step 3: Whiten feature vectors using Σ^{-1/2}
+    # Step 3: Whiten feature vectors using Sigma^{-1/2}
     # ----------------------------
 
     def whiten(vec):
