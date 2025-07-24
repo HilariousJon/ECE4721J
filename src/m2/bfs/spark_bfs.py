@@ -6,9 +6,8 @@ from src.m2.bfs.utils import (
     get_artist_from_song,
     get_artist_neighbor,
     get_songs_from_artist,
-    merge_string_lists,
+    merge_lists,
     calculate_distance,
-    merge_song_tuples,
 )
 from loguru import logger
 import time
@@ -55,9 +54,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             newly_found_artists = (
                 sc.parallelize(artists, 8)
                 .map(lambda x: get_artist_neighbor(x, artist_db_path))
-                .reduce(
-                    merge_string_lists
-                )  # FIX: Use the correct merge function for strings
+                .reduce(merge_lists)
             )
             artists.extend(newly_found_artists)
             logger.info(
@@ -68,32 +65,35 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         unique_artists = list(set(artists))
         logger.info(f"Deduplicated to {len(unique_artists)} unique artists.")
 
-        songs_tuples: List[Tuple[str, str, float]] = (
+        songs_tuples: List[Tuple[str, str]] = (
             sc.parallelize(unique_artists, 16)
             .map(lambda x: get_songs_from_artist(x, meta_db_path))
-            .reduce(merge_song_tuples)
+            .reduce(merge_lists)
         )
 
         songs_tuples = [s for s in songs_tuples if s[1] != track_id]
+        candidate_songs_ids = [tup[1] for tup in songs_tuples]
 
         logger.info(
-            f"BFS finished in {time.time() - start_time:.2f}s. Found {len(songs_tuples)} candidate songs."
+            f"BFS finished in {time.time() - start_time:.2f}s. Found {len(candidate_songs_ids)} candidate songs."
         )
 
-        if not songs_tuples:
+        if not candidate_songs_ids:
             logger.warning("No candidate songs found after BFS. Exiting.")
             return
 
         logger.info(
-            f"Pre-filtering {len(songs_tuples)} candidates by song_hotttnesss, taking top 200..."
+            f"Pre-filtering {len(candidate_songs_ids)} candidates by song_hotttnesss, taking top 200..."
         )
 
-        songs_tuples.sort(key=lambda x: x[2], reverse=True)
-        hottest_songs_tuples = songs_tuples[:200]
+        hottest_candidates_df = (
+            song_df.filter(col("track_id").isin(candidate_songs_ids))
+            .orderBy(col("song_hotttnesss").desc().nullsLast())
+            .limit(200)
+        )
 
-        candidate_songs_ids = [tup[1] for tup in hottest_songs_tuples]
         logger.info(
-            f"Pre-filtering complete. Proceeding with {len(candidate_songs_ids)} hottest songs for final comparison."
+            f"Pre-filtering complete. Proceeding with {hottest_candidates_df.count()} hottest songs for final comparison."
         )
 
         feature_cols = [
@@ -111,9 +111,10 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         ]
         metadata_cols = ["title", "artist_name", "track_id"]
 
-        candidate_features_df = song_df.filter(
-            col("track_id").isin(candidate_songs_ids)
-        ).select(feature_cols + metadata_cols)
+        # Use the pre-filtered DataFrame for the final comparison
+        candidate_features_df = hottest_candidates_df.select(
+            feature_cols + metadata_cols
+        )
 
         input_song_row = (
             song_df.filter(col("track_id") == track_id).select(feature_cols).first()
