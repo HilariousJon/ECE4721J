@@ -111,7 +111,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             "time_signature",
             "song_hotttnesss",
             # "artist_hotttnesss",
-            "artist_familiarity",
+            # "artist_familiarity",
         ]
         metadata_cols = ["title", "artist_name", "track_id"]
 
