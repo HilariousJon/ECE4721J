@@ -61,6 +61,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             artists = list(set(artists))
             logger.info(f"Depth {i + 1}: Found {len(artists)} total unique artists.")
 
+
         songs_tuples: List[Tuple[Any, Any]] = (
             sc.parallelize(artists, 16)
             .map(lambda x: get_songs_from_artist(x, meta_db_path))
