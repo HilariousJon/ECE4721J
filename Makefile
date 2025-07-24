@@ -123,7 +123,7 @@ build_songs_graph:
 		src/m2/songRec/build_songs_graph.py \
 		--input ./year-data/aggregate_year_prediction.avro \
 		--output ./data/songs_graph \
-		--threshold 0.5
+		--threshold 2.2
 
 commit:
 	git add -A; \
