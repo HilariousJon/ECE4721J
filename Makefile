@@ -98,6 +98,6 @@ run_bfs_spark:
 		-i ./data/aggregate.avro \
 		-M ./data/track_metadata.db \
 		-D 2 \
-		-s TRMMMYQ128F932D901
+		-s TRMUOZE12903CDF721
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
