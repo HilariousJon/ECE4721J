@@ -26,8 +26,9 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
     sc: SparkContext = spark.sparkContext
 
     try:
+        local_avro_path = f"file://{os.path.abspath(avro_path)}"
         logger.info(f"Loading avro data from {avro_path}...")
-        song_df = spark.read.format("avro").load(avro_path)
+        song_df = spark.read.format("avro").load(local_avro_path)
 
         track_id_list, artist_id_list, artist_name_list = get_artist_from_song(
             song_id, meta_db_path
