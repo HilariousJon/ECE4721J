@@ -97,7 +97,7 @@ run_bfs_spark:
 		-c local \
 		-i ./year-data/aggregate_year_prediction.avro \
 		-M ./data/track_metadata.db \
-		-D 1 \
+		-D 5 \
 		-s TRMUOZE12903CDF721
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
