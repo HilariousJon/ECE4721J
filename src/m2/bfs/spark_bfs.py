@@ -117,7 +117,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
 
         # Use the pre-filtered DataFrame for the final comparison
         candidate_features_df = hottest_candidates_df.select(
-            feature_cols + metadata_cols
+            feature_cols + metadata_cols + ["segments_timbre"]
         )
 
         input_song_row = (
