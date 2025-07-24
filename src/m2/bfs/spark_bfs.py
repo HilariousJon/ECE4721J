@@ -17,7 +17,13 @@ import numpy as np
 def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> None:
     (_, artist_db_path, _, avro_path, song_id, meta_db_path, bfs_depth) = args_wrapper
 
-    conf = SparkConf().setAppName("BFS Artist Similarity").setMaster("local[*]")
+    conf = (
+        SparkConf()
+        .setAppName("BFS Artist Similarity")
+        .setMaster("local[*]")
+        .set("spark.jars.packages", "org.apache.spark:spark-avro_2.12:3.2.4")
+    )
+
     sc = SparkContext(conf=conf)
     spark: SparkSession = SparkSession(sc)
 
