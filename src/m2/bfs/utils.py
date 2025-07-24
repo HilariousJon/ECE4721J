@@ -62,6 +62,8 @@ def calculate_distance(
     song1_features: ndarray, song2_data: Tuple[ndarray, tuple]
 ) -> Tuple[float, tuple]:
     song2_features, song2_metadata = song2_data
+    song2_features.replace(np.nan, 0, inplace=True)
+    song1_features.replace(np.nan, 0, inplace=True)
     norm1 = np.linalg.norm(song1_features)
     norm2 = np.linalg.norm(song2_features)
     if norm1 == 0 or norm2 == 0:
