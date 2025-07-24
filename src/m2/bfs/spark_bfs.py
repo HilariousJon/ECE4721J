@@ -121,7 +121,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         )
 
         input_song_row = (
-            song_df.filter(col("track_id") == track_id).select(feature_cols).first()
+            song_df.filter(col("track_id") == track_id).select(feature_cols + ["segments_timbre"]).first()
         )
         if not input_song_row:
             logger.error(
