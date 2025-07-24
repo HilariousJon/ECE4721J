@@ -9,11 +9,6 @@ from src.m2.bfs.utils import (
     merge_lists,
     calculate_distance,
 )
-from pyspark.ml.feature import BucketedRandomProjectionLSH
-from pyspark.ml.linalg import Vectors, VectorUDT
-from pyspark.sql import DataFrame
-from pyspark.sql.functions import udf
-from pyspark.sql.types import ArrayType, DoubleType
 from loguru import logger
 import time
 import os
@@ -63,6 +58,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             artists.extend(newly_found_artists)
             logger.info(f"Depth {i + 1}: Found {len(artists)} total unique artists.")
 
+
         songs_tuples: List[Tuple[Any, Any]] = (
             sc.parallelize(artists, 16)
             .map(lambda x: get_songs_from_artist(x, meta_db_path))
@@ -91,28 +87,53 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         ]
         metadata_cols = ["title", "artist_name", "track_id"]
 
+        candidate_features_df = song_df.filter(
+            col("track_id").isin(candidate_songs_ids)
+        ).select(feature_cols + metadata_cols)
+
         input_song_row = (
             song_df.filter(col("track_id") == track_id).select(feature_cols).first()
         )
+
         if not input_song_row:
             logger.error(
                 f"Input song with ID {track_id} not found in the feature dataset."
             )
             return
+
         input_song_features = np.array(
             [float(v) if v is not None else 0.0 for v in input_song_row],
             dtype=np.float64,
         )
+        broadcast_input_features = sc.broadcast(input_song_features)
 
-        logger.info("Switching to LSH for efficient similarity search...")
-        similarity_score, (title, artist, tid) = find_most_similar_with_lsh(
-            spark,
-            song_df,
-            candidate_songs_ids,
-            input_song_features,
-            feature_cols,
-            metadata_cols,
+        logger.info("Calculating similarity scores...")
+        features_rdd = candidate_features_df.rdd.map(
+            lambda row: (
+                np.array(
+                    [
+                        float(row[c]) if row[c] is not None else 0.0
+                        for c in feature_cols
+                    ],
+                    dtype=np.float64,
+                ),
+                (row["title"], row["artist_name"], row["track_id"]),
+            )
         )
+
+        if features_rdd.isEmpty():
+            logger.warning(
+                "No candidate songs with features found to compare against. Exiting."
+            )
+            return
+
+        most_similar_song = features_rdd.map(
+            lambda candidate_data: calculate_distance(
+                broadcast_input_features.value, candidate_data
+            )
+        ).reduce(max)
+
+        similarity_score, (title, artist, tid) = most_similar_song
 
         logger.success("Most similar song found:")
         logger.success(f" Song name: {title}")
@@ -123,69 +144,3 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
     finally:
         logger.info("Closing Spark Session...")
         spark.stop()
-
-
-def find_most_similar_with_lsh(
-    spark: SparkSession,
-    song_df: DataFrame,
-    candidate_ids: List[str],
-    input_features: np.ndarray,
-    feature_cols: List[str],
-    metadata_cols: List[str],
-) -> Tuple[float, tuple]:
-    logger.info("Preparing data for LSH: converting features to vectors...")
-
-    # UDF to combine multiple feature columns into a single array
-    def to_array_udf_func(*cols):
-        return [float(c) if c is not None else 0.0 for c in cols]
-
-    array_agg_udf = udf(to_array_udf_func, ArrayType(DoubleType()))
-
-    to_vector_udf = udf(lambda r: Vectors.dense(r), VectorUDT())
-
-    # Select only the candidate songs and transform their features
-    lsh_df = (
-        song_df.filter(col("track_id").isin(candidate_ids))
-        .withColumn("features_array", array_agg_udf(*[col(c) for c in feature_cols]))
-        .withColumn("features", to_vector_udf("features_array"))
-        .select(metadata_cols + ["features"])
-    )
-
-    logger.info("Training LSH model...")
-    brp = BucketedRandomProjectionLSH(
-        inputCol="features", outputCol="hashes", bucketLength=2.0, numHashTables=3
-    )
-    model = brp.fit(lsh_df)
-
-    logger.info("Finding approximate nearest neighbors using LSH...")
-    input_vector = Vectors.dense(input_features)
-
-    lsh_candidates_df = model.approxNearestNeighbors(
-        lsh_df, input_vector, numNearestNeighbors=100
-    )
-
-    logger.info(
-        f"LSH returned {lsh_candidates_df.count()} candidates for precise calculation."
-    )
-
-    if lsh_candidates_df.isEmpty():
-        logger.warning("LSH did not return any candidates.")
-        return -np.inf, ("N/A", "N/A", "N/A")
-
-    candidates_rdd = lsh_candidates_df.rdd.map(
-        lambda row: (
-            np.array(row["features"].toArray(), dtype=np.float64),
-            (row["title"], row["artist_name"], row["track_id"]),
-        )
-    )
-
-    sc = spark.sparkContext
-    broadcast_input_features = sc.broadcast(input_features)
-
-    most_similar_song = candidates_rdd.map(
-        lambda candidate_data: calculate_distance(
-            broadcast_input_features.value, candidate_data
-        )
-    ).reduce(max)
-
-    return most_similar_song
