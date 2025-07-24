@@ -99,7 +99,9 @@ def extract_hdf5_data(h5_path: str, schema: Dict[str, Any]) -> Dict[str, Any]:
                     record[field["name"]] = float(raw_value)
                 elif ftype == "array":
                     if raw_value is not None:
-                        safe_array = calculate_year_prediction_features(np.array(raw_value))
+                        safe_array = calculate_year_prediction_features(
+                            np.array(raw_value)
+                        )
                         record[field["name"]] = safe_array.tolist()
                     else:
                         record[field["name"]] = None
