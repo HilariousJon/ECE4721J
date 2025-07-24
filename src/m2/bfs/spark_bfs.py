@@ -58,7 +58,6 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             artists.extend(newly_found_artists)
             logger.info(f"Depth {i + 1}: Found {len(artists)} total unique artists.")
 
-
         songs_tuples: List[Tuple[Any, Any]] = (
             sc.parallelize(artists, 16)
             .map(lambda x: get_songs_from_artist(x, meta_db_path))
@@ -92,7 +91,11 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         ).select(feature_cols + metadata_cols)
 
         input_song_row = (
-            song_df.filter((col("track_id") == track_id) & (col("song_hotttnesss") > 100)).select(feature_cols).first()
+            song_df.filter(
+                (col("track_id") == track_id) & (col("song_hotttnesss") > 0.4)
+            )
+            .select(feature_cols)
+            .first()
         )
 
         if not input_song_row:
