@@ -68,6 +68,7 @@ def calculate_distance(
     if norm1 == 0 or norm2 == 0:
         return (-np.inf, song2_metadata)
     cosine_similarity = np.dot(song1_features, song2_features) / (norm1 * norm2)
-    l1_distance = np.sum(np.abs(song1_features - song2_features))
-    score = cosine_similarity - l1_distance
+    # l1_distance = np.sum(np.abs(song1_features - song2_features))
+    # score = cosine_similarity - l1_distance
+    score = cosine_similarity
     return (score, song2_metadata)

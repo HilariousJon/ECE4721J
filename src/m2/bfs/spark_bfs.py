@@ -92,7 +92,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         ).select(feature_cols + metadata_cols)
 
         input_song_row = (
-            song_df.filter(col("track_id") == track_id).select(feature_cols).first()
+            song_df.filter((col("track_id") == track_id) & col("song_hotttnesss") > 100).select(feature_cols).first()
         )
 
         if not input_song_row:
