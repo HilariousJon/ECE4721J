@@ -24,14 +24,15 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         .config("spark.jars.packages", "org.apache.spark:spark-avro_2.12:3.2.4")
         .getOrCreate()
     )
+
     sc: SparkContext = spark.sparkContext
 
     try:
         local_avro_path = f"file://{os.path.abspath(avro_path)}"
-        logger.info(f"Loading avro data from {avro_path}...")
+        logger.info(f"Loading avro data from local path: {local_avro_path}...")
         song_df = spark.read.format("avro").load(local_avro_path)
 
-        track_id_list, artist_id_list, artist_name_list = get_artist_from_song(
+        track_id, artist_id_list, artist_name_list = get_artist_from_song(
             song_id, meta_db_path
         )
 
@@ -41,7 +42,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
 
         artist_name = artist_name_list[0]
         artist_id = artist_id_list[0]
-        track_id = track_id_list[0]
+        track_id = track_id[0]
         artists = [artist_id]
 
         logger.info(
@@ -56,19 +57,43 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
                 .reduce(merge_lists)
             )
             artists.extend(newly_found_artists)
-            logger.info(f"Depth {i + 1}: Found {len(artists)} total unique artists.")
+            logger.info(
+                f"Depth {i + 1}: Artist list size is now {len(artists)} (including duplicates from previous layers)."
+            )
 
-        songs_tuples: List[Tuple[Any, Any]] = (
-            sc.parallelize(artists, 16)
+        logger.info(f"BFS finished. Total artist entries found: {len(artists)}.")
+        unique_artists = list(set(artists))
+        logger.info(f"Deduplicated to {len(unique_artists)} unique artists.")
+
+        songs_tuples: List[Tuple[str, str, float]] = (
+            sc.parallelize(unique_artists, 16)
             .map(lambda x: get_songs_from_artist(x, meta_db_path))
             .reduce(merge_lists)
         )
 
         songs_tuples = [s for s in songs_tuples if s[1] != track_id]
-        candidate_songs_ids = [tup[1] for tup in songs_tuples]
 
         logger.info(
-            f"BFS finished in {time.time() - start_time:.2f}s. Found {len(candidate_songs_ids)} candidate songs."
+            f"BFS finished in {time.time() - start_time:.2f}s. Found {len(songs_tuples)} candidate songs."
+        )
+
+        if not songs_tuples:
+            logger.warning("No candidate songs found after BFS. Exiting.")
+            return
+
+        logger.info(
+            f"Pre-filtering {len(songs_tuples)} candidates by song_hotttnesss, taking top 200..."
+        )
+
+        # Sort the list of tuples by the third element (hotness) in descending order
+        songs_tuples.sort(key=lambda x: x[2], reverse=True)
+
+        # Take the top 200
+        hottest_songs_tuples = songs_tuples[:200]
+
+        candidate_songs_ids = [tup[1] for tup in hottest_songs_tuples]
+        logger.info(
+            f"Pre-filtering complete. Proceeding with {len(candidate_songs_ids)} hottest songs for final comparison."
         )
 
         feature_cols = [
@@ -86,31 +111,26 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         ]
         metadata_cols = ["title", "artist_name", "track_id"]
 
+        # Use the much smaller, pre-filtered list of IDs to query the main DataFrame
         candidate_features_df = song_df.filter(
             col("track_id").isin(candidate_songs_ids)
         ).select(feature_cols + metadata_cols)
 
         input_song_row = (
-            song_df.filter(
-                (col("track_id") == track_id) & (col("song_hotttnesss") > 0.4)
-            )
-            .select(feature_cols)
-            .first()
+            song_df.filter(col("track_id") == track_id).select(feature_cols).first()
         )
-
         if not input_song_row:
             logger.error(
                 f"Input song with ID {track_id} not found in the feature dataset."
             )
             return
-
         input_song_features = np.array(
             [float(v) if v is not None else 0.0 for v in input_song_row],
             dtype=np.float64,
         )
         broadcast_input_features = sc.broadcast(input_song_features)
 
-        logger.info("Calculating similarity scores...")
+        logger.info("Calculating similarity scores for the top hottest songs...")
         features_rdd = candidate_features_df.rdd.map(
             lambda row: (
                 np.array(
@@ -138,11 +158,13 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
 
         similarity_score, (title, artist, tid) = most_similar_song
 
+        logger.success("=" * 30)
         logger.success("Most similar song found:")
-        logger.success(f" Song name: {title}")
-        logger.success(f" Artist: {artist}")
-        logger.success(f" Track ID: {tid}")
-        logger.success(f" Similarity score: {similarity_score:.4f}")
+        logger.success(f"  Song name: {title}")
+        logger.success(f"  Artist: {artist}")
+        logger.success(f"  Track ID: {tid}")
+        logger.success(f"  Similarity score: {similarity_score:.4f}")
+        logger.success("=" * 30)
 
     finally:
         logger.info("Closing Spark Session...")

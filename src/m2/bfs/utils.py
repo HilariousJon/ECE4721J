@@ -19,15 +19,17 @@ def get_artist_neighbor(artist_id: str, db_path: str) -> List[str]:
         return []
 
 
-def get_songs_from_artist(artist_id: str, db_path: str) -> List[Tuple[str, str]]:
+def get_songs_from_artist(artist_id: str, db_path: str) -> List[Tuple[str, str, float]]:
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        # Used parameterized query
-        query = "SELECT title, track_id FROM songs WHERE artist_id = ?"
+        query = "SELECT title, track_id, song_hotttnesss FROM songs WHERE artist_id = ?"
         results = cursor.execute(query, (artist_id,)).fetchall()
         conn.close()
-        return [(col[0], col[1]) for col in results]
+        # Return a tuple including the hotness, handling None values.
+        return [
+            (col[0], col[1], col[2] if col[2] is not None else 0.0) for col in results
+        ]
     except sqlite3.Error as e:
         logger.error(f"DB error in get_songs_from_artist for artist {artist_id}: {e}")
         return []
