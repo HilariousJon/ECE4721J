@@ -1,9 +1,9 @@
 import argparse
 import sys
 from loguru import logger
-from typing import List, Tuple
+from typing import Tuple
+from src.m2.bfs.spark_bfs import run_bfs_spark
 
-# Logger setup remains the same
 logger.remove()
 logger.add(
     sys.stderr,
@@ -15,33 +15,29 @@ logger.add(
 )
 
 
-def parser() -> Tuple[str, str, str]:
-    parsers = argparse.ArgumentParser(
-        description="""
-            Running BFS algorithms for artists graph
-            to find similar songs based on similar artists.
-        """
+def setup_parsers() -> Tuple[str, str, str, str, str, str, int]:
+    parser = argparse.ArgumentParser(
+        description="Running BFS algorithms for artists graph to find similar songs."
     )
-    parsers.add_argument(
+    parser.add_argument(
         "-m",
         "--mode",
         type=str,
         required=True,
         choices=["spark", "mapreduce"],
         dest="mode",
-        default="mapreduce",
-        help="Mode of execution: spark or mapreduce",
+        default="spark",
+        help="Mode of execution",
     )
-    parsers.add_argument(
-        "-d",
-        "--db_path",
+    parser.add_argument(
+        "-a",
+        "--artist_db_path",
         type=str,
         required=True,
-        dest="db_path",
-        default="./data/artist_similarity.db",
-        help="Path to the SQLite database containing artist similarity data",
+        dest="artist_db_path",
+        help="Path to the SQLite DB for artist similarity",
     )
-    parsers.add_argument(
+    parser.add_argument(
         "-c",
         "--config",
         type=str,
@@ -51,18 +47,57 @@ def parser() -> Tuple[str, str, str]:
         default="local",
         help="Running mode: local or cluster",
     )
-    args = parsers.parse_args()
-    logger.info(
-        "Mode: {} \nDatabase Path: {} \nConfiguration: {}".format(
-            args.mode, args.db_path, args.config
-        )
+    parser.add_argument(
+        "-i",
+        "--avro",
+        type=str,
+        required=True,
+        dest="avro",
+        help="Path to the avro file that stores the song feature data",
     )
-    if not args.schema or not args.hdf5 or not args.avro:
-        logger.error("Schema, input, and output paths are required.")
+    parser.add_argument(
+        "-s",
+        "--song_id",
+        type=str,
+        required=True,
+        dest="song_id",
+        help="Track ID to start the BFS traversal from",
+    )
+    parser.add_argument(
+        "-M",
+        "--meta_db_path",
+        type=str,
+        required=True,
+        dest="meta_db_path",
+        help="Path to the SQLite DB for track metadata",
+    )
+    parser.add_argument(
+        "-D",
+        "--bfs_depth",
+        type=int,
+        required=False,
+        dest="bfs_depth",
+        default=2,
+        help="Depth of BFS to traverse the artist graph",
+    )
+
+    args = parser.parse_args()
+
+    if args.bfs_depth < 1:
+        logger.error("BFS depth must be at least 1.")
         sys.exit(1)
+
     logger.info("Arguments parsed successfully.")
-    return args.mode, args.db_path, args.config
+    return (
+        args.mode,
+        args.artist_db_path,
+        args.config,
+        args.avro,
+        args.song_id,
+        args.meta_db_path,
+        args.bfs_depth,
+    )
 
 
 if __name__ == "__main__":
-    mode, db_path, running_mode = parser()
+    run_bfs_spark(setup_parsers())
