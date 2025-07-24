@@ -88,7 +88,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
 
         hottest_candidates_df = (
             song_df.filter(col("track_id").isin(candidate_songs_ids))
-            .orderBy(col("song_hotttnesss").desc().nullsLast())
+            .orderBy(col("song_hotttnesss").desc_nulls_last())
             .limit(200)
         )
 
