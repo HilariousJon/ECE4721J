@@ -138,10 +138,8 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         features_rdd = candidate_features_df.rdd.map(
             lambda row: (
                 np.array(
-                    [
-                        float(row[c]) if row[c] is not None else 0.0
-                        for c in feature_cols
-                    ],
+                    [float(row[c]) if row[c] is not None else 0.0 for c in feature_cols]
+                    + [timbre for timbre in row["segments_timbre"]], # deal with timbre segments
                     dtype=np.float64,
                 ),
                 (row["title"], row["artist_name"], row["track_id"]),
