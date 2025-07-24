@@ -10,7 +10,7 @@ from src.m2.bfs.utils import (
     calculate_distance,
 )
 from pyspark.ml.feature import BucketedRandomProjectionLSH
-from pyspark.ml.linalg import Vectors
+from pyspark.ml.linalg import Vectors, VectorUDT
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import udf
 from pyspark.sql.types import ArrayType, DoubleType
@@ -133,38 +133,33 @@ def find_most_similar_with_lsh(
     feature_cols: List[str],
     metadata_cols: List[str],
 ) -> Tuple[float, tuple]:
-    """
-    Uses LSH to efficiently find the most similar song.
-    """
-    # LSH requires features to be in a single 'Vector' column.
     logger.info("Preparing data for LSH: converting features to vectors...")
 
-    # Create a UDF (User Defined Function) to convert array of floats to a Vector
-    to_vector_udf = udf(lambda r: Vectors.dense(r), ArrayType(DoubleType()))
+    # UDF to combine multiple feature columns into a single array
+    def to_array_udf_func(*cols):
+        return [float(c) if c is not None else 0.0 for c in cols]
+
+    array_agg_udf = udf(to_array_udf_func, ArrayType(DoubleType()))
+
+    to_vector_udf = udf(lambda r: Vectors.dense(r), VectorUDT())
 
     # Select only the candidate songs and transform their features
     lsh_df = (
         song_df.filter(col("track_id").isin(candidate_ids))
-        .withColumn(
-            "features_array",
-            udf(lambda *cols: list(cols), ArrayType(DoubleType()))(
-                *[col(c).cast("double") for c in feature_cols]
-            ),
-        )
+        .withColumn("features_array", array_agg_udf(*[col(c) for c in feature_cols]))
         .withColumn("features", to_vector_udf("features_array"))
         .select(metadata_cols + ["features"])
     )
 
     logger.info("Training LSH model...")
     brp = BucketedRandomProjectionLSH(
-        inputCol="features", outputCol="hashes", bucketLength=10.0, numHashTables=5
+        inputCol="features", outputCol="hashes", bucketLength=2.0, numHashTables=3
     )
     model = brp.fit(lsh_df)
 
     logger.info("Finding approximate nearest neighbors using LSH...")
     input_vector = Vectors.dense(input_features)
 
-    # Find the top N most likely candidates.
     lsh_candidates_df = model.approxNearestNeighbors(
         lsh_df, input_vector, numNearestNeighbors=100
     )
@@ -177,7 +172,6 @@ def find_most_similar_with_lsh(
         logger.warning("LSH did not return any candidates.")
         return -np.inf, ("N/A", "N/A", "N/A")
 
-    # Convert the small DataFrame to an RDD to use our custom distance function
     candidates_rdd = lsh_candidates_df.rdd.map(
         lambda row: (
             np.array(row["features"].toArray(), dtype=np.float64),
@@ -185,11 +179,9 @@ def find_most_similar_with_lsh(
         )
     )
 
-    # Use broadcast for the input features
     sc = spark.sparkContext
     broadcast_input_features = sc.broadcast(input_features)
 
-    # Final calculation using the original distance metric
     most_similar_song = candidates_rdd.map(
         lambda candidate_data: calculate_distance(
             broadcast_input_features.value, candidate_data
