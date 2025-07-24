@@ -1,7 +1,14 @@
 import argparse
 import sys
+import os
 from loguru import logger
 from typing import Tuple
+try:
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+except NameError:
+    sys.path.insert(0, os.path.abspath('.'))
 from src.m2.bfs.spark_bfs import run_bfs_spark
 
 logger.remove()

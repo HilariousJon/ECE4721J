@@ -12,7 +12,6 @@ from src.m2.bfs.utils import (
 from loguru import logger
 import time
 import numpy as np
-import sys
 
 
 def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> None:
