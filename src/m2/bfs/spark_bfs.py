@@ -6,8 +6,9 @@ from src.m2.bfs.utils import (
     get_artist_from_song,
     get_artist_neighbor,
     get_songs_from_artist,
-    merge_lists,
+    merge_string_lists,
     calculate_distance,
+    merge_song_tuples,
 )
 from loguru import logger
 import time
@@ -32,7 +33,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         logger.info(f"Loading avro data from local path: {local_avro_path}...")
         song_df = spark.read.format("avro").load(local_avro_path)
 
-        track_id, artist_id_list, artist_name_list = get_artist_from_song(
+        track_id_list, artist_id_list, artist_name_list = get_artist_from_song(
             song_id, meta_db_path
         )
 
@@ -42,7 +43,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
 
         artist_name = artist_name_list[0]
         artist_id = artist_id_list[0]
-        track_id = track_id[0]
+        track_id = track_id_list[0]
         artists = [artist_id]
 
         logger.info(
@@ -54,7 +55,9 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             newly_found_artists = (
                 sc.parallelize(artists, 8)
                 .map(lambda x: get_artist_neighbor(x, artist_db_path))
-                .reduce(merge_lists)
+                .reduce(
+                    merge_string_lists
+                )  # FIX: Use the correct merge function for strings
             )
             artists.extend(newly_found_artists)
             logger.info(
@@ -68,7 +71,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         songs_tuples: List[Tuple[str, str, float]] = (
             sc.parallelize(unique_artists, 16)
             .map(lambda x: get_songs_from_artist(x, meta_db_path))
-            .reduce(merge_lists)
+            .reduce(merge_song_tuples)
         )
 
         songs_tuples = [s for s in songs_tuples if s[1] != track_id]
@@ -85,10 +88,7 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             f"Pre-filtering {len(songs_tuples)} candidates by song_hotttnesss, taking top 200..."
         )
 
-        # Sort the list of tuples by the third element (hotness) in descending order
         songs_tuples.sort(key=lambda x: x[2], reverse=True)
-
-        # Take the top 200
         hottest_songs_tuples = songs_tuples[:200]
 
         candidate_songs_ids = [tup[1] for tup in hottest_songs_tuples]
@@ -111,7 +111,6 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         ]
         metadata_cols = ["title", "artist_name", "track_id"]
 
-        # Use the much smaller, pre-filtered list of IDs to query the main DataFrame
         candidate_features_df = song_df.filter(
             col("track_id").isin(candidate_songs_ids)
         ).select(feature_cols + metadata_cols)
@@ -158,13 +157,11 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
 
         similarity_score, (title, artist, tid) = most_similar_song
 
-        logger.success("=" * 30)
         logger.success("Most similar song found:")
         logger.success(f"  Song name: {title}")
         logger.success(f"  Artist: {artist}")
         logger.success(f"  Track ID: {tid}")
         logger.success(f"  Similarity score: {similarity_score:.4f}")
-        logger.success("=" * 30)
 
     finally:
         logger.info("Closing Spark Session...")

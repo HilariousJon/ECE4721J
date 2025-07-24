@@ -57,8 +57,19 @@ def get_artist_from_song(
         return [], [], []
 
 
-def merge_lists(list1: List[str], list2: List[str]) -> List[str]:
+def merge_string_lists(list1: List[str], list2: List[str]) -> List[str]:
     return list(set(list1) | set(list2))
+
+
+def merge_song_tuples(list1: List[Tuple], list2: List[Tuple]) -> List[Tuple]:
+    seen = set()
+    result = []
+    for item in list1 + list2:
+        identifier = item[1]
+        if identifier not in seen:
+            seen.add(identifier)
+            result.append(item)
+    return result
 
 
 def calculate_distance(
