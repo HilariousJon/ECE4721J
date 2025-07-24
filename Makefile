@@ -95,7 +95,6 @@ run_bfs_spark:
 		-m spark \
 		-a ./data/artist_similarity.db \
 		-c local \
-		# -i ./data/aggregate.avro \
 		-i ./year-data/aggregate_year_prediction.avro \
 		-M ./data/track_metadata.db \
 		-D 3 \
