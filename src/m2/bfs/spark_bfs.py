@@ -1,6 +1,6 @@
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+from pyspark.sql.functions import col, broadcast
 from typing import List, Tuple, Any
 from src.m2.bfs.utils import (
     get_artist_from_song,
@@ -86,8 +86,12 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             f"Pre-filtering {len(candidate_songs_ids)} candidates by song_hotttnesss, taking top 200..."
         )
 
+        candidate_ids_df = spark.createDataFrame(
+            [(id,) for id in candidate_songs_ids], ["track_id"]
+        )
+
         hottest_candidates_df = (
-            song_df.filter(col("track_id").isin(candidate_songs_ids))
+            song_df.join(broadcast(candidate_ids_df), "track_id")
             .orderBy(col("song_hotttnesss").desc_nulls_last())
             .limit(200)
         )
