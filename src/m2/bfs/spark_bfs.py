@@ -50,15 +50,12 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
 
         start_time = time.time()
         for i in range(bfs_depth):
-            # The 'artists' list is parallelized to find neighbors for each artist
-            new_neighbors = (
+            newly_found_artists = (
                 sc.parallelize(artists, 8)
                 .map(lambda x: get_artist_neighbor(x, artist_db_path))
                 .reduce(merge_lists)
             )
-            # Extend the main list with the newly found neighbors
-            artists.extend(new_neighbors)
-            artists = list(set(artists))
+            artists.extend(newly_found_artists)
             logger.info(f"Depth {i + 1}: Found {len(artists)} total unique artists.")
 
 
