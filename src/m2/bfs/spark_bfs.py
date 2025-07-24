@@ -121,7 +121,12 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         )
 
         input_song_row = (
-            song_df.filter(col("track_id") == track_id).select(feature_cols + ["segments_timbre"]).first()
+            song_df.filter(col("track_id") == track_id).select(feature_cols).first()
+        )
+        input_segments_timbre = (
+            song_df.filter(col("track_id") == track_id)
+            .select("segments_timbre")
+            .first()
         )
         if not input_song_row:
             logger.error(
@@ -129,7 +134,8 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             )
             return
         input_song_features = np.array(
-            [float(v) if v is not None else 0.0 for v in input_song_row],
+            [float(v) if v is not None else 0.0 for v in input_song_row]
+            + [float(timbre) for timbre in input_segments_timbre],
             dtype=np.float64,
         )
         broadcast_input_features = sc.broadcast(input_song_features)
@@ -139,7 +145,9 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             lambda row: (
                 np.array(
                     [float(row[c]) if row[c] is not None else 0.0 for c in feature_cols]
-                    + [timbre for timbre in row["segments_timbre"]], # deal with timbre segments
+                    + [
+                        timbre for timbre in row["segments_timbre"]
+                    ],  # deal with timbre segments
                     dtype=np.float64,
                 ),
                 (row["title"], row["artist_name"], row["track_id"]),
