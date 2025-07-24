@@ -131,18 +131,9 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         ]
 
         timbre_data = input_song_row["segments_timbre"]
-        if timbre_data is None:
-            timbre_features = [0.0] * 90
-        else:
-            timbre_features = [
-                float(item) for sublist in timbre_data for item in sublist
-            ]
-            if len(timbre_features) < 90:
-                timbre_features.extend([0.0] * (90 - len(timbre_features)))
-            timbre_features = timbre_features[:90]
 
         input_song_features = np.array(
-            simple_features + timbre_features,
+            simple_features + timbre_data,
             dtype=np.float64,
         )
 
