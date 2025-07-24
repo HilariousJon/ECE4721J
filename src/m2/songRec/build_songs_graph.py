@@ -1,138 +1,105 @@
 import argparse
 import time
-import numpy as np
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, collect_list, udf
-from pyspark.sql.types import ArrayType, DoubleType, StructType, StructField
-
-from pyspark.ml.feature import VectorAssembler, BucketedRandomProjectionLSH
+from pyspark.sql.functions import col, collect_list, expr, sha2, concat_ws, udf
+from pyspark.sql.types import ArrayType, DoubleType
+from pyspark.ml.feature import VectorAssembler, StandardScaler, PCA, BucketedRandomProjectionLSH
 
 def build_song_graph(input_path, output_path, distance_threshold):
-    spark = SparkSession.builder.appName("SongGraphWithMahalanobisLSH").getOrCreate()
+    spark = SparkSession.builder.appName("SongGraphWithLSH").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
 
     start_time = time.time()
 
-    # Load dataset (Avro format), select and clean required columns
+    # Load and clean
     song_df = (
         spark.read.format("avro").load(input_path)
-        .select("song_id", "segments_timbre")
-        .dropna(subset=["song_id", "segments_timbre"])
+        .select("song_id", "year", "duration", "loudness", "tempo", "energy", "danceability",
+                "key", "mode", "time_signature", "song_hotttnesss", "segments_timbre")
+        .dropna(subset=["song_id", "year", "duration", "loudness", "tempo", "energy", "danceability",
+                        "key", "mode", "time_signature", "song_hotttnesss", "segments_timbre"])
         .dropDuplicates(["song_id"])
     )
 
-    # ----------------------------
-    # Step 1: Parse feature vector and covariance
-    # ----------------------------
+    # Flatten 'segments_timbre' to a fixed-length array of 12
+    def flatten_timbre(arr):
+        if arr is None:
+            return [0.0] * 12
+        return (arr + [0.0] * 12)[:12]
 
-    # segments_timbre[0:12] is the song vector
-    # segments_timbre[12:90] is the upper triangle of 12x12 covariance matrix
+    print("Flattening segments_timbre...")
+    flatten_udf = udf(flatten_timbre, ArrayType(DoubleType()))
+    song_df = song_df.withColumn("flat_timbre", flatten_udf(col("segments_timbre")))
 
-    def parse_segments(arr):
-        vec = (arr[:12] if arr else [0.0]*12)
-        cov_upper = (arr[12:90] if arr and len(arr) >= 90 else [0.0]*78)
-        return vec, cov_upper
-
-    print("Parsing segments...")
-    parse_udf = udf(lambda x: parse_segments(x), StructType([
-        StructField("vec", ArrayType(DoubleType())),
-        StructField("cov_upper", ArrayType(DoubleType()))
-    ]))
-
-    song_df = song_df.withColumn("parsed", parse_udf(col("segments_timbre")))
-    song_df = song_df.withColumn("vec", col("parsed.vec"))
-    song_df = song_df.withColumn("cov_upper", col("parsed.cov_upper"))
-
-    # ----------------------------
-    # Step 2: Convert covariance vector to matrix and compute Sigma^{-1/2}
-    # ----------------------------
-
-    def cov_upper_to_full(cov_upper):
-        cov = np.zeros((12, 12))
-        idx = 0
-        for i in range(12):
-            for j in range(i, 12):
-                cov[i, j] = cov_upper[idx]
-                cov[j, i] = cov_upper[idx]
-                idx += 1
-        return cov
-
-    print("Computing covariance matrix...")
-    sample_cov_upper = song_df.select("cov_upper").first()["cov_upper"]
-    cov = cov_upper_to_full(sample_cov_upper)
-
-    # Regularize in case of singular matrix
-    cov += np.eye(12) * 1e-6
-
-    # Compute Sigma^{-1/2} via Cholesky
-    cov_inv_sqrt = np.linalg.inv(np.linalg.cholesky(cov)).T
-
-    # Broadcast the inverse square root to workers
-    broadcast_inv_sqrt = spark.sparkContext.broadcast(cov_inv_sqrt)
-
-    # ----------------------------
-    # Step 3: Whiten feature vectors using Sigma^{-1/2}
-    # ----------------------------
-
-    def whiten(vec):
-        return (broadcast_inv_sqrt.value @ np.array(vec)).tolist()
-
-    print("Whitening feature vectors...")
-    whiten_udf = udf(whiten, ArrayType(DoubleType()))
-    song_df = song_df.withColumn("whitened", whiten_udf(col("vec")))
-
-    # Expand whitened vector into columns
+    # Expand flat_timbre into 12 separate columns
     for i in range(12):
-        song_df = song_df.withColumn(f"feature_{i}", col("whitened").getItem(i))
+        song_df = song_df.withColumn(f"timbre_{i}", col("flat_timbre").getItem(i))
 
-    # ----------------------------
-    # Step 4: LSH with whitened vectors
-    # ----------------------------
+    # Assemble features
+    feature_cols = ["year", "duration", "loudness", "tempo", "energy", "danceability"
+                    , "key", "mode", "time_signature", "song_hotttnesss"] + [f"timbre_{i}" for i in range(12)]
 
-    print("Assembling features for LSH...")
-    feature_cols = [f"feature_{i}" for i in range(12)]
     assembler = VectorAssembler(inputCols=feature_cols, outputCol="features")
-    assembled_df = assembler.transform(song_df)
+    features_df = assembler.transform(song_df)
 
-    # Apply LSH
+    # Standardize
+    scaler = StandardScaler(inputCol="features", outputCol="scaled_features", withStd=True, withMean=True)
+    scaled_df = scaler.fit(features_df).transform(features_df)
+
+    # LSH
     print("Building LSH model...")
     lsh = BucketedRandomProjectionLSH(
-        inputCol="features",
+        inputCol="scaled_features",
         outputCol="hashes",
         bucketLength=1.0,
         numHashTables=3
     )
-    lsh_model = lsh.fit(assembled_df)
-    lsh_df = lsh_model.transform(assembled_df)
+    lsh_model = lsh.fit(scaled_df)
+    lsh_df = lsh_model.transform(scaled_df)
 
-    # ----------------------------
-    # Step 5: LSH Approximate Join + Filter by Distance
-    # ----------------------------
+    # Add bucket ID: use sha256 hash of hash vector
+    lsh_df = lsh_df.withColumn("bucket_id", sha2(expr("CAST(hashes[0] AS STRING)"), 256))
 
-    print("Finding approximate neighbors...")
-    joined = lsh_model.approxSimilarityJoin(
-        datasetA=lsh_df,
-        datasetB=lsh_df,
-        threshold=distance_threshold,
-        distCol="distance"
-    ).filter(col("datasetA.song_id") != col("datasetB.song_id"))
+    # Get all unique bucket ids
+    bucket_ids = [row["bucket_id"] for row in lsh_df.select("bucket_id").distinct().collect()]
 
-    # ----------------------------
-    # Step 6: Build adjacency list and write output
-    # ----------------------------
+    # Perform per-bucket self-join
+    print(f"Performing self-join in {len(bucket_ids)} buckets...")
+    all_pairs = []
+    for bucket_id in bucket_ids:
+        bucket_df = lsh_df.filter(col("bucket_id") == bucket_id)
+        if bucket_df.count() < 2:
+            continue  # skip single-song buckets
 
-    print("Building adjacency list...")
-    edges = joined.select(
+        joined = lsh_model.approxSimilarityJoin(
+            datasetA=bucket_df,
+            datasetB=bucket_df,
+            threshold=distance_threshold,
+            distCol="distance"
+        ).filter(col("datasetA.song_id") != col("datasetB.song_id"))
+
+        all_pairs.append(joined)
+
+    if all_pairs:
+        filtered = all_pairs[0]
+        for p in all_pairs[1:]:
+            filtered = filtered.union(p)
+    else:
+        filtered = spark.createDataFrame([], lsh_model.approxSimilarityJoin(lsh_df, lsh_df, 1.0, "distance").schema)
+
+    # Build adjacency list
+    edges = filtered.select(
         col("datasetA.song_id").cast("string").alias("song_id"),
         col("datasetB.song_id").cast("string").alias("neighbor_id")
-    ).groupBy("song_id") \
-     .agg(collect_list("neighbor_id").alias("neighbors"))
+    ).groupBy("song_id").agg(collect_list("neighbor_id").alias("neighbors"))
 
+    # Write output
+    print("Writing output...")
     edges.write.mode("overwrite").parquet(output_path)
 
     end_time = time.time()
-    print(f"Graph built in {end_time - start_time:.2f} seconds")
     spark.stop()
+    print("Graph build time:", end_time - start_time, "seconds")
 
 
 if __name__ == "__main__":

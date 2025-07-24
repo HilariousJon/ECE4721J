@@ -1,10 +1,9 @@
 import argparse
 import time
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, collect_list, row_number
-from pyspark.sql.window import Window
+from pyspark.sql.functions import col, collect_list
 from pyspark.ml.feature import VectorAssembler, StandardScaler, PCA, BucketedRandomProjectionLSH
-from pyspark.sql.functions import expr
+from pyspark.sql.functions import expr, sha2
 
 def build_artist_graph(input_path, output_path, distance_threshold):
     spark = SparkSession.builder.appName("ArtistGraphWithLSH").getOrCreate()
@@ -18,7 +17,8 @@ def build_artist_graph(input_path, output_path, distance_threshold):
         .select("artist_id", "artist_name", "artist_location",
                 "artist_latitude", "artist_longitude",
                 "artist_hotttnesss", "artist_familiarity")
-        .dropna(subset=["artist_id", "artist_hotttnesss", "artist_familiarity", "artist_latitude", "artist_longitude"])
+        .dropna(subset=["artist_id", "artist_hotttnesss", "artist_familiarity",
+                        "artist_latitude", "artist_longitude"])
         .dropDuplicates(["artist_id"])
     )
 
@@ -39,27 +39,48 @@ def build_artist_graph(input_path, output_path, distance_threshold):
     variance = pca_model.explainedVariance
     pca_df = pca_model.transform(scaled_df).select("artist_id", "pca_vector")
 
-    # Use LSH to find approximate nearest neighbors
+    # LSH
     print("Building LSH model...")
     lsh = BucketedRandomProjectionLSH(
         inputCol="pca_vector",
         outputCol="hashes",
-        bucketLength=1.0,  # can be tuned
-        numHashTables=3    # can be tuned
+        bucketLength=1.0,
+        numHashTables=3
     )
     lsh_model = lsh.fit(pca_df)
     lsh_df = lsh_model.transform(pca_df)
 
-    # Approximate self-join with threshold filtering
-    print("Finding approximate neighbors...")
-    filtered = lsh_model.approxSimilarityJoin(
-        datasetA=lsh_df,
-        datasetB=lsh_df,
-        threshold=distance_threshold,
-        distCol="distance"
-    ).filter(col("datasetA.artist_id") != col("datasetB.artist_id"))
+    # Add bucket ID based on hashes[0]
+    lsh_df = lsh_df.withColumn("bucket_id", sha2(expr("CAST(hashes[0] AS STRING)"), 256))
 
-    # Build adjacency list: artist_id -> list of neighbor_id
+    # Get unique bucket IDs
+    bucket_ids = [row["bucket_id"] for row in lsh_df.select("bucket_id").distinct().collect()]
+
+    # Self-join within each bucket
+    print(f"Finding approximate neighbors in {len(bucket_ids)} buckets...")
+    all_pairs = []
+    for bucket_id in bucket_ids:
+        bucket_df = lsh_df.filter(col("bucket_id") == bucket_id)
+        if bucket_df.count() < 2:
+            continue
+
+        joined = lsh_model.approxSimilarityJoin(
+            datasetA=bucket_df,
+            datasetB=bucket_df,
+            threshold=distance_threshold,
+            distCol="distance"
+        ).filter(col("datasetA.artist_id") != col("datasetB.artist_id"))
+
+        all_pairs.append(joined)
+
+    if all_pairs:
+        filtered = all_pairs[0]
+        for p in all_pairs[1:]:
+            filtered = filtered.union(p)
+    else:
+        filtered = spark.createDataFrame([], lsh_model.approxSimilarityJoin(lsh_df, lsh_df, 1.0, "distance").schema)
+
+    # Build adjacency list
     print("Building adjacency list...")
     edges = filtered.select(
         col("datasetA.artist_id").cast("string").alias("artist_id"),
@@ -67,7 +88,7 @@ def build_artist_graph(input_path, output_path, distance_threshold):
     ).groupBy("artist_id") \
      .agg(collect_list("neighbor_id").alias("neighbors"))
 
-    # Write to parquet
+    # Write output
     edges.write.mode("overwrite").parquet(output_path)
 
     end_time = time.time()
