@@ -101,15 +101,15 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         )
 
         feature_cols = [
-            "loudness",
-            "tempo",
-            "duration",
-            "energy",
-            "danceability",
-            "key",
-            "mode",
-            "time_signature",
-            "song_hotttnesss",
+            # "loudness",
+            # "tempo",
+            # "duration",
+            # "energy",
+            # "danceability",
+            # "key",
+            # "mode",
+            # "time_signature",
+            # "song_hotttnesss",
             # "artist_hotttnesss",
             # "artist_familiarity",
         ]
