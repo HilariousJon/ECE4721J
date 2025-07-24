@@ -88,6 +88,7 @@ run_drill:
 run_bfs_spark:
 	poetry run spark-submit \
 		--master local[4] \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
 		--conf spark.pyspark.python=$(PYTHON) \
 		src/m2/bfs/driver.py \
