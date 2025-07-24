@@ -121,23 +121,31 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
         )
 
         input_song_row = (
-            song_df.filter(col("track_id") == track_id).select(feature_cols).first()
-        )
-        input_segments_timbre = (
             song_df.filter(col("track_id") == track_id)
-            .select("segments_timbre")
+            .select(feature_cols + ["segments_timbre"])
             .first()
         )
-        if not input_song_row:
-            logger.error(
-                f"Input song with ID {track_id} not found in the feature dataset."
-            )
-            return
+        simple_features = [
+            float(v) if v is not None else 0.0
+            for v in input_song_row[: len(feature_cols)]
+        ]
+
+        timbre_data = input_song_row["segments_timbre"]
+        if timbre_data is None:
+            timbre_features = [0.0] * 90
+        else:
+            timbre_features = [
+                float(item) for sublist in timbre_data for item in sublist
+            ]
+            if len(timbre_features) < 90:
+                timbre_features.extend([0.0] * (90 - len(timbre_features)))
+            timbre_features = timbre_features[:90]
+
         input_song_features = np.array(
-            [float(v) if v is not None else 0.0 for v in input_song_row]
-            + [float(timbre) for timbre in input_segments_timbre],
+            simple_features + timbre_features,
             dtype=np.float64,
         )
+
         broadcast_input_features = sc.broadcast(input_song_features)
 
         logger.info("Calculating similarity scores for the top hottest songs...")
