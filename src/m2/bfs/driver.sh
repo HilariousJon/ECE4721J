@@ -42,8 +42,8 @@ for i in $(seq 1 $BFS_DEPTH); do
         -files "./src/m2/bfs/mapper_bfs.py,./src/m2/bfs/reducer_bfs.py,./src/m2/bfs/utils.py,${ARTIST_DB}" \
         -input "$BFS_INPUT" \
         -output "$BFS_OUTPUT" \
-        -mapper "python3 mapper_bfs.py" \
-        -reducer "python3 reducer_bfs.py"
+        -mapper "python3 ./src/m2/bfs/mapper_bfs.py" \
+        -reducer "python3 ./src/m2/bfs/reducer_bfs.py"
     BFS_INPUT="$BFS_OUTPUT" 
 done
 BFS_FINAL_OUTPUT=$BFS_INPUT
@@ -53,11 +53,11 @@ echo ">>> JOB 1: COMPLETE. Final artist list is in ${BFS_FINAL_OUTPUT}"
 echo ">>> JOB 2: Fetching all songs for discovered artists..."
 hadoop jar "$STREAMING_JAR" \
     -D mapreduce.job.name="SongSim_2_GetSongs" \
-    -files "mapper_get_songs.py,reducer_get_songs.py,utils.py,${META_DB}" \
+    -files "./src/m2/bfs/mapper_get_songs.py,./src/m2/bfs/reducer_get_songs.py,./src/m2/bfs/utils.py,${META_DB}" \
     -input "$BFS_FINAL_OUTPUT" \
     -output "$HDFS_SONGS_OUTPUT" \
-    -mapper "python3 mapper_get_songs.py" \
-    -reducer "python3 reducer_get_songs.py"
+    -mapper "python3 ./src/m2/bfs/mapper_get_songs.py" \
+    -reducer "python3 ./src/m2/bfs/reducer_get_songs.py"
 [ -f candidate_song_ids.txt ] && rm candidate_song_ids.txt
 hdfs dfs -cat "${HDFS_SONGS_OUTPUT}/part-*" > candidate_song_ids.txt
 echo ">>> JOB 2: COMPLETE. Found $(wc -l < candidate_song_ids.txt) candidate songs."
@@ -66,11 +66,11 @@ echo ">>> JOB 2: COMPLETE. Found $(wc -l < candidate_song_ids.txt) candidate son
 echo ">>> JOB 3: Filtering for Top 200 Hottest Songs..."
 hadoop jar "$STREAMING_JAR" \
     -D mapreduce.job.name="SongSim_3_TopSongs" \
-    -files "mapper_top_songs.py,reducer_top_songs.py,candidate_song_ids.txt,${HDFS_WORKDIR}/input_song_id.txt" \
+    -files "./src/m2/bfs/mapper_top_songs.py,./src/m2/bfs/reducer_top_songs.py,candidate_song_ids.txt,${HDFS_WORKDIR}/input_song_id.txt" \
     -input "$HDFS_INPUT_SONG_DATA" \
     -output "$HDFS_TOP_SONGS_OUTPUT" \
-    -mapper "python3 mapper_top_songs.py" \
-    -reducer "python3 reducer_top_songs.py" \
+    -mapper "python3 ./src/m2/bfs/mapper_top_songs.py" \
+    -reducer "python3 ./src/m2/bfs/reducer_top_songs.py" \
     -numReduceTasks 1
 echo ">>> JOB 3: COMPLETE."
 
@@ -78,11 +78,11 @@ echo ">>> JOB 3: COMPLETE."
 echo ">>> JOB 4: Calculating similarity for top songs..."
 hadoop jar "$STREAMING_JAR" \
     -D mapreduce.job.name="SongSim_4_FindSimilar" \
-    -files "mapper_similarity.py,reducer_similarity.py,utils.py,${HDFS_WORKDIR}/input_song_features.json" \
+    -files "./src/m2/bfs/mapper_similarity.py,./src/m2/bfs/reducer_similarity.py,./src/m2/bfs/utils.py,${HDFS_WORKDIR}/input_song_features.json" \
     -input "$HDFS_TOP_SONGS_OUTPUT" \
     -output "$HDFS_FINAL_OUTPUT" \
-    -mapper "python3 mapper_similarity.py" \
-    -reducer "python3 reducer_similarity.py" \
+    -mapper "python3 ./src/m2/bfs/mapper_similarity.py" \
+    -reducer "python3 ./src/m2/bfs/reducer_similarity.py" \
     -numReduceTasks 1
 echo ">>> JOB 4: COMPLETE."
 
