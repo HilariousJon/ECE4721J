@@ -106,7 +106,7 @@ run_mapreduce_setup:
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/bfs/create_song_data.py \
 		./year-data/aggregate_year_prediction.avro \
-		./temp_json_output
+		./year-data/tmp
 
 run_mapreduce_bfs:
 	bash src/m2/bfs/driver.sh
