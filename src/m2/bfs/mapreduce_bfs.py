@@ -1,185 +1,117 @@
-import time
+import sys
 import json
-import os
 import numpy as np
-from loguru import logger
-from pathlib import Path
+import os
+import argparse
 from fastavro import reader
-from mrjob.job import MRJob
-from mrjob.step import MRStep
-from utils import (
-    get_artist_neighbor,
-    get_artist_from_song,
-)
-from src.m2.bfs.mapreduce_recommender import SongRecommenderMR
+
+from utils import get_songs_from_artist, calculate_distance
+
+META_DB_PATH = os.environ.get("META_DB_PATH")
+AVRO_PATH = os.environ.get("AVRO_PATH")
+INPUT_TRACK_ID = os.environ.get("INPUT_TRACK_ID")
+INPUT_FEATURES_JSON = os.environ.get("INPUT_FEATURES_JSON")
 
 
-class MRJobWorkflow:
-    def __init__(self, args_wrapper):
-        (
-            self.mode,
-            self.artist_db_path,
-            self.config,
-            self.avro_path,
-            self.song_id,
-            self.meta_db_path,
-            self.bfs_depth,
-        ) = args_wrapper
-        self.cache_path = self.avro_path.replace(".avro", ".json")
+def load_song_features_map(avro_path):
+    song_map = {}
+    with open(avro_path, "rb") as fo:
+        for record in reader(fo):
+            song_map[record["track_id"]] = record
+    return song_map
 
-    def _run_bfs(self) -> list:
-        logger.info("Workflow Step 1: Running local BFS to get artist list...")
-        _, artist_id_list, artist_name_list = get_artist_from_song(
-            self.song_id, self.meta_db_path
-        )
-        if not artist_name_list:
-            logger.error(f"Artist name not found for song ID {self.song_id}. Exiting.")
-            return []
 
-        start_artist_id = artist_id_list[0]
-        logger.info(
-            f"Starting BFS from artist: {artist_name_list[0]} (ID: {start_artist_id})"
-        )
+def mapper_get_songs():
+    song_features_map = load_song_features_map(AVRO_PATH)
+    for line in sys.stdin:
+        artist_id = line.strip().strip('"')
+        if not artist_id:
+            continue
 
-        artists_frontier = {start_artist_id}
-        all_artists = {start_artist_id}
+        songs = get_songs_from_artist(artist_id, META_DB_PATH)
+        for title, track_id in songs:
+            if track_id == INPUT_TRACK_ID:
+                continue
 
-        for i in range(self.bfs_depth):
-            newly_found_artists = set()
-            for artist_id in artists_frontier:
-                neighbors = get_artist_neighbor(artist_id, self.artist_db_path)
-                newly_found_artists.update(n for n in neighbors if n not in all_artists)
+            song_info = song_features_map.get(track_id)
+            if song_info and song_info.get("song_hotttnesss") is not None:
+                hotttnesss = song_info["song_hotttnesss"]
+                artist_name = song_info.get("artist_name", "Unknown Artist")
+                print(f"1\t{json.dumps((hotttnesss, track_id, title, artist_name))}")
 
-            if not newly_found_artists:
-                logger.info(f"Depth {i + 1}: No new artists found. BFS finished early.")
-                break
 
-            artists_frontier = newly_found_artists
-            all_artists.update(artists_frontier)
-            logger.info(
-                f"Depth {i + 1}: Found {len(newly_found_artists)} new artists. Total unique artists: {len(all_artists)}."
+def reducer_top_n_songs():
+    all_songs = []
+    for line in sys.stdin:
+        _key, value_str = line.strip().split("\t", 1)
+        all_songs.append(json.loads(value_str))
+
+    sorted_songs = sorted(all_songs, key=lambda x: x[0], reverse=True)
+
+    for song_data in sorted_songs[:200]:
+        print(json.dumps(song_data))
+
+
+def mapper_calc_similarity():
+    song_features_map = load_song_features_map(AVRO_PATH)
+    input_song_features = np.array(json.loads(INPUT_FEATURES_JSON), dtype=np.float64)
+    feature_cols = [
+        "loudness",
+        "tempo",
+        "duration",
+        "energy",
+        "danceability",
+        "key",
+        "mode",
+        "time_signature",
+        "song_hotttnesss",
+    ]
+
+    for line in sys.stdin:
+        song_data = json.loads(line.strip())
+        _hotttnesss, track_id, title, artist_name = song_data
+
+        candidate_song_info = song_features_map.get(track_id)
+        if candidate_song_info:
+            simple_features = [
+                float(candidate_song_info.get(c, 0.0) or 0.0) for c in feature_cols
+            ]
+            timbre_data = candidate_song_info.get("segments_timbre", [])
+            candidate_features = np.array(
+                simple_features + timbre_data, dtype=np.float64
             )
 
-        return list(all_artists)
+            metadata = (title, artist_name, track_id)
+            score, _ = calculate_distance(
+                input_song_features, (candidate_features, metadata)
+            )
 
-    def _prepare_mrjob_inputs(self):
-        logger.info("Workflow Step 2: Preparing inputs for MRJob...")
+            print(f"1\t{json.dumps((score, metadata))}")
 
-        if os.path.exists(self.cache_path):
-            try:
-                with open(self.cache_path, "r", encoding="utf-8") as f:
-                    logger.success(
-                        f"Cache hit! Loading features from: {self.cache_path}"
-                    )
-                    full_track_id, input_features_json = json.load(f)
-                    return full_track_id, input_features_json
-            except (json.JSONDecodeError, IOError, TypeError) as e:
-                logger.warning(
-                    f"Cache file {self.cache_path} is invalid. Re-computing. Error: {e}"
-                )
 
-        logger.info(
-            f"Cache miss. Computing features from source file: {self.avro_path}"
-        )
+def reducer_find_max_similarity():
+    max_song = (-float("inf"), None)
+    for line in sys.stdin:
+        _key, value_str = line.strip().split("\t", 1)
+        current_song = json.loads(value_str)
+        if current_song[0] > max_song[0]:
+            max_song = current_song
 
-        track_id_list, _, _ = get_artist_from_song(self.song_id, self.meta_db_path)
-        if not track_id_list:
-            raise ValueError(f"Could not find track info for song ID {self.song_id}")
-        full_track_id = track_id_list[0]
+    if max_song[1]:
+        score, (title, artist, tid) = max_song
+        print(f"{score}\t{title}\t{artist}\t{tid}")
 
-        with open(self.avro_path, "rb") as fo:
-            for record in reader(fo):
-                if record["track_id"] == full_track_id:
-                    feature_cols = [
-                        "loudness",
-                        "tempo",
-                        "duration",
-                        "energy",
-                        "danceability",
-                        "key",
-                        "mode",
-                        "time_signature",
-                        "song_hotttnesss",
-                    ]
-                    simple_features = [
-                        float(record.get(c, 0.0) or 0.0) for c in feature_cols
-                    ]
-                    timbre_data = record.get("segments_timbre", [])
 
-                    input_features = np.array(
-                        simple_features + timbre_data, dtype=np.float64
-                    )
-                    input_features_json = json.dumps(input_features.tolist())
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--phase", required=True)
+    args = parser.parse_args()
 
-                    try:
-                        result_to_cache = [full_track_id, input_features_json]
-                        with open(self.cache_path, "w") as f:
-                            json.dump(result_to_cache, f)
-                        logger.info(f"Saved new features to cache: {self.cache_path}")
-                    except IOError as e:
-                        logger.error(
-                            f"Failed to write to cache file {self.cache_path}: {e}"
-                        )
-
-                    return full_track_id, input_features_json
-
-    def run(self):
-        total_start_time = time.time()
-
-        # perform bfs
-        artist_ids = self._run_bfs()
-        if not artist_ids:
-            logger.warning("BFS did not find any artists. Exiting workflow.")
-            return
-
-        # prepare inputs for MRJob
-        try:
-            input_track_id, input_features_json = self._prepare_mrjob_inputs()
-        except ValueError as e:
-            logger.error(f"Failed to prepare MRJob inputs: {e}")
-            return
-
-        utils_path = Path(__file__).parent / "utils.py"
-        # configure and run MRJob
-        logger.info("Workflow Step 3: Configuring and launching MRJob...")
-        bootstrap_script = "pip install loguru numpy==1.23.5 fastavro==1.9.4"
-        mr_job = SongRecommenderMR(
-            args=[
-                "--bootstrap",
-                bootstrap_script,
-                "--file",
-                str(utils_path),
-                "--meta-db-path",
-                self.meta_db_path,
-                "--avro-path",
-                self.avro_path,
-                "--input-features-json",
-                input_features_json,
-                "--input-track-id",
-                input_track_id,
-            ]
-            + ["-r", "hadoop"]
-        )
-
-        # giving the output to mrjob
-        mr_job.sandbox(
-            stdin=[f'"{artist_id}"\n'.encode("utf-8") for artist_id in artist_ids]
-        )
-
-        with mr_job.make_runner() as runner:
-            runner.run()
-            logger.info("Workflow Step 4: Processing final results...")
-            final_result_found = False
-            for key, value in mr_job.parse_output(runner.stdout):
-                final_result_found = True
-                similarity_score, (title, artist, tid) = key, value
-                logger.success("Most similar song found:")
-                logger.success(f"  Song name: {title}")
-                logger.success(f"  Artist: {artist}")
-                logger.success(f"  Track ID: {tid}")
-                logger.success(f"  Similarity score: {similarity_score:.4f}")
-
-            if not final_result_found:
-                logger.warning("MRJob finished but produced no output.")
-
-        logger.info(f"Total workflow finished in {time.time() - total_start_time:.2f}s")
+    if args.phase == "mapper1":
+        mapper_get_songs()
+    elif args.phase == "reducer1":
+        reducer_top_n_songs()
+    elif args.phase == "mapper2":
+        mapper_calc_similarity()
+    elif args.phase == "reducer2":
+        reducer_find_max_similarity()
