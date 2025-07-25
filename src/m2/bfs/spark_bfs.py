@@ -13,6 +13,7 @@ from loguru import logger
 import time
 import os
 import numpy as np
+import heapq
 
 
 def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> None:
@@ -83,21 +84,53 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             return
 
         logger.info(
-            f"Pre-filtering {len(candidate_songs_ids)} candidates by song_hotttnesss, taking top 200..."
+            f"Pre-filtering {len(candidate_songs_ids)} candidates using MapReduce-style Top-N logic..."
         )
 
         candidate_ids_df = spark.createDataFrame(
             [(id,) for id in candidate_songs_ids], ["track_id"]
         )
 
-        hottest_candidates_df = (
-            song_df.join(broadcast(candidate_ids_df), "track_id")
-            .orderBy(col("song_hotttnesss").desc_nulls_last())
-            .limit(200)
-        )
+        candidate_songs_df = song_df.join(broadcast(candidate_ids_df), "track_id")
+
+        def get_partition_top_n(iterator: iter, n: int = 200) -> iter:
+            local_top_songs = []
+            for row in iterator:
+                hotttnesss = (
+                    row["song_hotttnesss"]
+                    if row["song_hotttnesss"] is not None
+                    else float("-inf")
+                )
+
+                if len(local_top_songs) < n:
+                    heapq.heappush(local_top_songs, (hotttnesss, row))
+                else:
+                    heapq.heappushpop(local_top_songs, (hotttnesss, row))
+
+            return iter([row for score, row in local_top_songs])
+
+        local_top_rdd = candidate_songs_df.rdd.mapPartitions(get_partition_top_n)
+
+        all_local_tops = local_top_rdd.collect()
+
+        global_top_200_rows = sorted(
+            all_local_tops,
+            key=lambda row: (
+                row["song_hotttnesss"]
+                if row["song_hotttnesss"] is not None
+                else float("-inf")
+            ),
+            reverse=True,
+        )[:200]
+
+        if not global_top_200_rows:
+            logger.warning("No candidate songs left after Top-N filtering. Exiting.")
+            return
+
+        hottest_candidates_df = spark.createDataFrame(global_top_200_rows)
 
         logger.info(
-            f"Pre-filtering complete. Proceeding with {hottest_candidates_df.count()} hottest songs for final comparison."
+            f"Pre-filtering {len(candidate_songs_ids)} candidates by song_hotttnesss, taking top 200..."
         )
 
         feature_cols = [

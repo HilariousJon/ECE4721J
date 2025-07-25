@@ -117,7 +117,7 @@ run_mapreduce_setup:
 		TRMUOZE12903CDF721 \
 		./year-data/input_song_features.json
 
-run_mapreduce_bfs:
+run_mapreduce_bfs_local:
 	bash src/m2/bfs/driver_local.sh
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
