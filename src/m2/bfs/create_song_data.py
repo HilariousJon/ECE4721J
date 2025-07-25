@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     # Write the DataFrame as JSON. Spark will create a directory with part-files.
     # This format is exactly what JSON Lines is.
-    song_df.write.mode("overwrite").json(f"file://{output_path}")
+    song_df.write.mode("overwrite").json(f"file://{os.path.abspath(output_path)}")
 
     spark.stop()
     print("Conversion successful.")
