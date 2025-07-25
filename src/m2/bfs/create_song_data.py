@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
 import sys
+import os
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -17,8 +18,8 @@ if __name__ == "__main__":
         .config("spark.jars.packages", "org.apache.spark:spark-avro_2.12:3.2.4")
         .getOrCreate()
     )
-
-    print(f"Reading Avro data from: {avro_path}")
+    local_avro_path = f"file://{os.path.abspath(avro_path)}"
+    print(f"Reading Avro data from: {local_avro_path}")
 
     # Read the original Avro file
     song_df = spark.read.format("avro").load(avro_path)
