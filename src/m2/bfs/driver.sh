@@ -1,94 +1,98 @@
 #!/bin/bash
+set -e 
 
-set -e
-
-echo "--- Song Recommender Hadoop Workflow ---"
-
-SONG_ID="TRMUOZE12903CDF721"
-BFS_DEPTH=2
+# --- CONFIGURATION ---
+STREAMING_JAR="/usr/local/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.2.2.jar"
+HDFS_WORKDIR="/user/$(whoami)/song_similarity_$(date +%s)"
 ARTIST_DB="./data/artist_similarity.db"
-META_DB="./data/track_metadata.db"
-AVRO_DATA="./year-data/aggregate_year_prediction.avro"
-VENV_ARCHIVE="./venv.zip"
+META_DB="t./data/track_metadata.db"
+INPUT_SONG_ID="TRMUOZE12903CDF721" 
+BFS_DEPTH=2
 
-ARTIST_LIST_FILE="artist_list_input.txt"
-FEATURE_FILE="song_features.json"
+# --- HDFS Paths ---
+HDFS_INPUT_SONG_DATA="${HDFS_WORKDIR}/input/song_data.jsonl"
+HDFS_BFS_BASE="${HDFS_WORKDIR}/bfs"
+HDFS_SONGS_OUTPUT="${HDFS_WORKDIR}/songs_output"
+HDFS_TOP_SONGS_OUTPUT="${HDFS_WORKDIR}/top_songs_output"
+HDFS_FINAL_OUTPUT="${HDFS_WORKDIR}/final_output"
 
-PREPARE_SCRIPT="./src/m2/bfs/prepare_inputs.py"
-WORKER_SCRIPT="./src/m2/bfs/hadoop_worker.py"
-UTILS_SCRIPT="./src/m2/bfs/utils.py"
+echo "--- Starting Song Similarity Workflow ---"
+echo "HDFS Working Directory: ${HDFS_WORKDIR}"
 
-echo "STEP 1: Preparing local inputs (BFS & Feature Extraction)..."
-poetry run python3 $PREPARE_SCRIPT \
-    --song-id $SONG_ID \
-    --bfs-depth $BFS_DEPTH \
-    --meta-db $META_DB \
-    --artist-db $ARTIST_DB \
-    --avro-path $AVRO_DATA \
-    --out-artists $ARTIST_LIST_FILE \
-    --out-features $FEATURE_FILE
+# --- JOB 0: SETUP AND UPLOAD ---
+echo ">>> JOB 0: Preparing local files and uploading to HDFS..."
+python3 mapreduce_setup.py "$INPUT_SONG_ID" "$META_DB"
+hdfs dfs -mkdir -p "${HDFS_WORKDIR}/input"
+hdfs dfs -put song_data.jsonl "${HDFS_INPUT_SONG_DATA}"
+hdfs dfs -put input_song_features.json "${HDFS_WORKDIR}/"
+hdfs dfs -put initial_artists.txt "${HDFS_WORKDIR}/input/"
+echo "$INPUT_SONG_ID" > input_song_id.txt 
+hdfs dfs -put input_song_id.txt "${HDFS_WORKDIR}/"
+rm input_song_id.txt 
+echo ">>> JOB 0: COMPLETE"
 
-echo "STEP 2: Setting up HDFS environment..."
-INPUT_TRACK_ID=$(jq -r '.track_id' $FEATURE_FILE)
-INPUT_FEATURES_JSON=$(jq -r '.features_json' $FEATURE_FILE)
+# --- JOB 1: ITERATIVE BFS ---
+echo ">>> JOB 1: Running Iterative BFS for depth ${BFS_DEPTH}..."
+BFS_INPUT="${HDFS_WORKDIR}/input/initial_artists.txt"
+for i in $(seq 1 $BFS_DEPTH); do
+    echo "  -> BFS Depth ${i}"
+    BFS_OUTPUT="${HDFS_BFS_BASE}/depth_${i}"
+    hadoop jar "$STREAMING_JAR" \
+        -D mapreduce.job.name="SongSim_1_BFS_Depth_${i}" \
+        -files "mapper_bfs.py,reducer_bfs.py,utils.py,${ARTIST_DB}" \
+        -input "$BFS_INPUT" \
+        -output "$BFS_OUTPUT" \
+        -mapper "python3 mapper_bfs.py" \
+        -reducer "python3 reducer_bfs.py"
+    BFS_INPUT="$BFS_OUTPUT" 
+done
+BFS_FINAL_OUTPUT=$BFS_INPUT
+echo ">>> JOB 1: COMPLETE. Final artist list is in ${BFS_FINAL_OUTPUT}"
 
-JOB_DIR="hdfs:///user/hadoopuser/song_recommender_$(date +%s)"
-HDFS_VENV_PATH="${JOB_DIR}/files/venv.zip"
-INPUT_DIR_STEP1="${JOB_DIR}/input"
-OUTPUT_DIR_STEP1="${JOB_DIR}/output_step1"
-OUTPUT_DIR_STEP2="${JOB_DIR}/output_final"
+# --- JOB 2: GET SONGS FROM ARTISTS ---
+echo ">>> JOB 2: Fetching all songs for discovered artists..."
+hadoop jar "$STREAMING_JAR" \
+    -D mapreduce.job.name="SongSim_2_GetSongs" \
+    -files "mapper_get_songs.py,reducer_get_songs.py,utils.py,${META_DB}" \
+    -input "$BFS_FINAL_OUTPUT" \
+    -output "$HDFS_SONGS_OUTPUT" \
+    -mapper "python3 mapper_get_songs.py" \
+    -reducer "python3 reducer_get_songs.py"
+[ -f candidate_song_ids.txt ] && rm candidate_song_ids.txt
+hdfs dfs -cat "${HDFS_SONGS_OUTPUT}/part-*" > candidate_song_ids.txt
+echo ">>> JOB 2: COMPLETE. Found $(wc -l < candidate_song_ids.txt) candidate songs."
 
-hdfs dfs -mkdir -p $(dirname $HDFS_VENV_PATH)
-hdfs dfs -put -f $ARTIST_LIST_FILE $INPUT_DIR_STEP1/
-hdfs dfs -put -f $VENV_ARCHIVE $HDFS_VENV_PATH
+# --- JOB 3: FILTER TOP 200 HOTTEST SONGS ---
+echo ">>> JOB 3: Filtering for Top 200 Hottest Songs..."
+hadoop jar "$STREAMING_JAR" \
+    -D mapreduce.job.name="SongSim_3_TopSongs" \
+    -files "mapper_top_songs.py,reducer_top_songs.py,candidate_song_ids.txt,${HDFS_WORKDIR}/input_song_id.txt" \
+    -input "$HDFS_INPUT_SONG_DATA" \
+    -output "$HDFS_TOP_SONGS_OUTPUT" \
+    -mapper "python3 mapper_top_songs.py" \
+    -reducer "python3 reducer_top_songs.py" \
+    -numReduceTasks 1
+echo ">>> JOB 3: COMPLETE."
 
-HADOOP_STREAMING_JAR="/home/hadoopuser/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.2.2.jar"
-FILES_TO_UPLOAD="$WORKER_SCRIPT,$UTILS_SCRIPT,$META_DB,$AVRO_DATA"
-CHILD_ENV_VALUE="META_DB_PATH=$(basename $META_DB),AVRO_PATH=$(basename $AVRO_DATA),INPUT_TRACK_ID=$INPUT_TRACK_ID,INPUT_FEATURES_JSON=$INPUT_FEATURES_JSON"
+# --- JOB 4: CALCULATE SIMILARITY ---
+echo ">>> JOB 4: Calculating similarity for top songs..."
+hadoop jar "$STREAMING_JAR" \
+    -D mapreduce.job.name="SongSim_4_FindSimilar" \
+    -files "mapper_similarity.py,reducer_similarity.py,utils.py,${HDFS_WORKDIR}/input_song_features.json" \
+    -input "$HDFS_TOP_SONGS_OUTPUT" \
+    -output "$HDFS_FINAL_OUTPUT" \
+    -mapper "python3 mapper_similarity.py" \
+    -reducer "python3 reducer_similarity.py" \
+    -numReduceTasks 1
+echo ">>> JOB 4: COMPLETE."
 
-VENV_PYTHON_EXEC="./venv/$(basename $VENV_PATH)/bin/python3"
-
-echo "STEP 3: Running MapReduce Job 1 (Top 200 Songs)..."
-hadoop jar $HADOOP_STREAMING_JAR \
-    -D "mapred.child.env=$CHILD_ENV_VALUE" \
-    -D mapreduce.job.name="SongRec - Step 1" \
-    -D mapreduce.job.reduces=1 \
-    -archives "${HDFS_VENV_PATH}#venv" \
-    -files $FILES_TO_UPLOAD \
-    -input $INPUT_DIR_STEP1 \
-    -output $OUTPUT_DIR_STEP1 \
-    -mapper "$VENV_PYTHON_EXEC $(basename $WORKER_SCRIPT) --phase mapper1" \
-    -reducer "$VENV_PYTHON_EXEC $(basename $WORKER_SCRIPT) --phase reducer1"
-
-echo "STEP 4: Running MapReduce Job 2 (Calculate Similarity)..."
-hadoop jar $HADOOP_STREAMING_JAR \
-    -D "mapred.child.env=$CHILD_ENV_VALUE" \
-    -D mapreduce.job.name="SongRec - Step 2" \
-    -D mapreduce.job.reduces=1 \
-    -archives "${HDFS_VENV_PATH}#venv" \
-    -files $FILES_TO_UPLOAD \
-    -input $OUTPUT_DIR_STEP1 \
-    -output $OUTPUT_DIR_STEP2 \
-    -mapper "$VENV_PYTHON_EXEC $(basename $WORKER_SCRIPT) --phase mapper2" \
-    -reducer "$VENV_PYTHON_EXEC $(basename $WORKER_SCRIPT) --phase reducer2"
-
-echo "STEP 5: Fetching and displaying results..."
-RESULT=$(hdfs dfs -cat $OUTPUT_DIR_STEP2/part-00000)
-SCORE=$(echo "$RESULT" | cut -f1)
-TITLE=$(echo "$RESULT" | cut -f2)
-ARTIST=$(echo "$RESULT" | cut -f3)
-TID=$(echo "$RESULT" | cut -f4)
-echo "----------------------------------------"
-echo ">>> Most Similar Song Found <<<"
-echo "  Title:    $TITLE"
-echo "  Artist:   $ARTIST"
-echo "  Track ID: $TID"
-echo "  Score:    $SCORE"
-echo "----------------------------------------"
-
-echo "STEP 6: Cleaning up HDFS and local temp files..."
-hdfs dfs -rm -r $JOB_DIR
-rm $ARTIST_LIST_FILE
-rm $FEATURE_FILE
-
+# --- FINAL STEP: DISPLAY RESULTS AND CLEANUP ---
+echo ""
+echo "--- FINAL RESULT ---"
+hdfs dfs -cat "${HDFS_FINAL_OUTPUT}/part-00000"
+echo "--------------------"
+echo ">>> Cleaning up HDFS directory: ${HDFS_WORKDIR}"
+hdfs dfs -rm -r -skipTrash "${HDFS_WORKDIR}"
+echo ">>> Cleaning up local files..."
+rm candidate_song_ids.txt initial_artists.txt
 echo "--- Workflow Finished ---"

@@ -91,7 +91,7 @@ run_bfs_spark:
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
 		--conf spark.pyspark.python=$(PYTHON) \
-		src/m2/bfs/driver.py \
+		src/m2/bfs/spark_driver.py \
 		-m spark \
 		-a ./data/artist_similarity.db \
 		-c local \
