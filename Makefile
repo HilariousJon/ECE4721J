@@ -125,6 +125,22 @@ build_songs_graph:
 		--output ./data/songs_graph \
 		--threshold 2.2
 
+song_recommend:
+	# run the spark job to recommend songs based on the graph and features
+	poetry run spark-submit \
+		--master local[2] \
+		--conf spark.pyspark.driver.python=python3 \
+		--conf spark.pyspark.python=python3 \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/songRec/song_recommend.py \
+		--graph ./data/songs_graph \
+		--features ./year-data/aggregate_year_prediction.avro \
+		--seeds SOAAAQN12AB01856D3 SOAADAD12A8C13D5B0 SOAAGJG12A8C141F3F \
+		--topk 10 \
+		--w_sim 0.5 \
+		--w_hot 0.3 \
+		--w_bfs 0.2
+
 commit:
 	git add -A; \
 	git commit -m "chore(p1m2): auto backup [build joj]" --allow-empty && git push
