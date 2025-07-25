@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 import json
+import os
 import sys
 
 if __name__ == "__main__":
