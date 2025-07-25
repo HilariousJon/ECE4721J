@@ -115,7 +115,7 @@ run_mapreduce_setup:
 		src/m2/bfs/create_input_features.py \
 		./year-data/aggregate_year_prediction.avro \
 		TRMUOZE12903CDF721 \
-		./year-data/input_features.json
+		./year-data/input_song_features.json
 
 run_mapreduce_bfs:
 	bash src/m2/bfs/driver.sh

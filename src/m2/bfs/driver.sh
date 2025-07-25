@@ -2,7 +2,7 @@
 set -e 
 
 # --- CONFIGURATION ---
-STREAMING_JAR="/usr/local/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.2.2.jar"
+STREAMING_JAR="/home/hadoopuser/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.2.2.jar"
 HDFS_WORKDIR="/user/$(whoami)/song_similarity_$(date +%s)"
 ARTIST_DB="./data/artist_similarity.db"
 META_DB="./data/track_metadata.db"
