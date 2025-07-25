@@ -39,7 +39,7 @@ for i in $(seq 1 $BFS_DEPTH); do
     BFS_OUTPUT="${HDFS_BFS_BASE}/depth_${i}"
     hadoop jar "$STREAMING_JAR" \
         -D mapreduce.job.name="SongSim_1_BFS_Depth_${i}" \
-        -files "mapper_bfs.py,reducer_bfs.py,utils.py,${ARTIST_DB}" \
+        -files "./src/m2/bfs/mapper_bfs.py,./src/m2/bfs/reducer_bfs.py,./src/m2/bfs/utils.py,${ARTIST_DB}" \
         -input "$BFS_INPUT" \
         -output "$BFS_OUTPUT" \
         -mapper "python3 mapper_bfs.py" \
