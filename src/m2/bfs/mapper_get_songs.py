@@ -2,7 +2,7 @@
 import sys
 import utils
 
-META_DB_FILENAME = "./data/track_metadata.db"
+META_DB_FILENAME = "track_metadata.db"
 
 
 def main():

@@ -4,7 +4,7 @@ import json
 import numpy as np
 import utils
 
-INPUT_FEATURES_FILENAME = "./year-data/input_song_features.json"
+INPUT_FEATURES_FILENAME = "input_song_features.json"
 input_song_features = None
 
 

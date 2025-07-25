@@ -2,7 +2,7 @@
 import sys
 import utils
 
-ARTIST_DB_FILENAME = "./data/artist_similarity.db"
+ARTIST_DB_FILENAME = "artist_similarity.db"
 
 
 def main():
