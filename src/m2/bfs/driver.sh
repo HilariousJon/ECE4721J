@@ -4,7 +4,6 @@ set -e
 
 STREAMING_JAR="/home/hadoopuser/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.2.2.jar"
 
-# Define local directories for better organization.
 PYTHON_SCRIPTS_DIR="./src/m2/bfs"
 DATA_DIR="./data"
 OUTPUT_DATA_DIR="./year-data"
@@ -12,25 +11,25 @@ OUTPUT_DATA_DIR="./year-data"
 ARTIST_DB="${DATA_DIR}/artist_similarity.db"
 META_DB="${DATA_DIR}/track_metadata.db"
 
-# Job parameters.
-INPUT_SONG_ID="TRMUOZE12903CDF721" # The track_id to find recommendations for.
+INPUT_SONG_ID="TRMUOZE12NuvoleCDF721" # The track_id to find recommendations for.
 BFS_DEPTH=2 # How many layers of artist similarity to explore.
 
-HDFS_WORKDIR="/user/$(whoami)/song_similarity_$(date +%s)"
+# --- HDFS Configuration ---
+HDFS_WORKDIR="/user/$(whoami)/song_similarity_run_$(date +%s)"
 HDFS_INPUT_SONG_DATA="${HDFS_WORKDIR}/input/song_data.jsonl"
 HDFS_BFS_BASE="${HDFS_WORKDIR}/bfs"
 HDFS_SONGS_OUTPUT="${HDFS_WORKDIR}/songs_output"
 HDFS_TOP_SONGS_OUTPUT="${HDFS_WORKDIR}/top_songs_output"
 HDFS_FINAL_OUTPUT="${HDFS_WORKDIR}/final_output"
 
+
 echo "--- Starting Song Similarity Workflow ---"
 echo "HDFS Working Directory: ${HDFS_WORKDIR}"
 
+# --- HDFS CLEANUP AND SETUP ---
 echo ">>> STEP 0: Cleaning up and preparing HDFS directory..."
-# Check if the HDFS working directory already exists.
 if hdfs dfs -test -d "${HDFS_WORKDIR}"; then
     echo "HDFS directory ${HDFS_WORKDIR} exists. Removing it for a fresh start."
-    # Remove the old directory. '-skipTrash' permanently deletes it.
     hdfs dfs -rm -r -skipTrash "${HDFS_WORKDIR}"
 fi
 echo "Creating new HDFS directory structure at ${HDFS_WORKDIR}"
@@ -38,9 +37,7 @@ hdfs dfs -mkdir -p "${HDFS_WORKDIR}/input"
 
 # --- LOCAL SETUP AND UPLOAD ---
 echo ">>> STEP 1: Preparing local files and uploading to HDFS..."
-# Run the local python script to generate the initial artist list.
 python3 "${PYTHON_SCRIPTS_DIR}/mapreduce_setup.py" "$INPUT_SONG_ID" "$META_DB"
-
 hdfs dfs -put "${OUTPUT_DATA_DIR}/song_data.jsonl" "${HDFS_INPUT_SONG_DATA}"
 hdfs dfs -put "${OUTPUT_DATA_DIR}/input_song_features.json" "${HDFS_WORKDIR}/"
 hdfs dfs -put ./initial_artists.txt "${HDFS_WORKDIR}/input/"
@@ -49,36 +46,53 @@ hdfs dfs -put ./input_song_id.txt "${HDFS_WORKDIR}/"
 rm ./input_song_id.txt 
 echo ">>> STEP 1: COMPLETE"
 
-# --- JOB 1: ITERATIVE BFS ---
+
+# --- JOB 2: ITERATIVE BFS ---
 echo ">>> JOB 2: Running Iterative BFS for depth ${BFS_DEPTH}..."
 BFS_INPUT="${HDFS_WORKDIR}/input/initial_artists.txt"
 for i in $(seq 1 $BFS_DEPTH); do
     echo "  -> BFS Depth ${i}"
     BFS_OUTPUT="${HDFS_BFS_BASE}/depth_${i}"
     hadoop jar "$STREAMING_JAR" \
-        -D mapreduce.job.name="SongSim_BFS_Depth_${i}" \
-        -files "${PYTHON_SCRIPTS_DIR}/utils.py,${PYTHON_SCRIPTS_DIR}/mapper_bfs.py,${PYTHON_SCRIPTS_DIR}/reducer_bfs.py,${ARTIST_DB}" \
+        -D mapreduce.job.name="SongSim_BFS_Iter_Depth_${i}" \
+        -files "${PYTHON_SCRIPTS_DIR}/utils.py,${PYTHON_SCRIPTS_DIR}/mapper_bfs.py,${PYTHON_SCRIPTS_DIR}/reducer_iterator.py,${ARTIST_DB}" \
         -input "$BFS_INPUT" \
         -output "$BFS_OUTPUT" \
         -mapper "python3 mapper_bfs.py" \
-        -reducer "python3 reducer_bfs.py"
+        -reducer "python3 reducer_iterator.py" # CORRECT: Use the simple reducer that allows propagation.
     BFS_INPUT="$BFS_OUTPUT" 
 done
-BFS_FINAL_OUTPUT=$BFS_INPUT
-echo ">>> JOB 2: COMPLETE. Final artist list is in ${BFS_FINAL_OUTPUT}"
+BFS_FINAL_OUTPUT_WITH_TAGS=$BFS_INPUT
+echo ">>> JOB 2: COMPLETE. BFS iterations finished."
+
+
+# --- JOB 2.5: BFS CLEANUP ---
+echo ">>> JOB 2.5: Cleaning up BFS results for the next job..."
+BFS_CLEAN_OUTPUT="${HDFS_BFS_BASE}/bfs_final_artists"
+hadoop jar "$STREAMING_JAR" \
+    -D mapreduce.job.name="SongSim_BFS_Cleanup" \
+    -D mapreduce.job.reduces=1 \
+    -files "${PYTHON_SCRIPTS_DIR}/reducer_bfs.py" \
+    -input "$BFS_FINAL_OUTPUT_WITH_TAGS" \
+    -output "$BFS_CLEAN_OUTPUT" \
+    -mapper "cat" \
+    -reducer "python3 reducer_bfs.py" # CORRECT: Use the original reducer to create a clean list.
+echo ">>> JOB 2.5: COMPLETE. Clean artist list is in ${BFS_CLEAN_OUTPUT}"
+
 
 # --- JOB 3: GET SONGS FROM ARTISTS ---
 echo ">>> JOB 3: Fetching all songs for discovered artists..."
 hadoop jar "$STREAMING_JAR" \
     -D mapreduce.job.name="SongSim_GetSongs" \
     -files "${PYTHON_SCRIPTS_DIR}/utils.py,${PYTHON_SCRIPTS_DIR}/mapper_get_songs.py,${PYTHON_SCRIPTS_DIR}/reducer_get_songs.py,${META_DB}" \
-    -input "$BFS_FINAL_OUTPUT" \
+    -input "$BFS_CLEAN_OUTPUT" \
     -output "$HDFS_SONGS_OUTPUT" \
     -mapper "python3 mapper_get_songs.py" \
     -reducer "python3 reducer_get_songs.py"
 [ -f candidate_song_ids.txt ] && rm candidate_song_ids.txt
 hdfs dfs -cat "${HDFS_SONGS_OUTPUT}/part-*" > candidate_song_ids.txt
 echo ">>> JOB 3: COMPLETE. Found $(wc -l < candidate_song_ids.txt) candidate songs."
+
 
 # --- JOB 4: FILTER TOP 200 HOTTEST SONGS ---
 echo ">>> JOB 4: Filtering for Top 200 Hottest Songs..."
@@ -92,6 +106,7 @@ hadoop jar "$STREAMING_JAR" \
     -numReduceTasks 1
 echo ">>> JOB 4: COMPLETE."
 
+
 # --- JOB 5: CALCULATE SIMILARITY ---
 echo ">>> JOB 5: Calculating similarity for top songs..."
 hadoop jar "$STREAMING_JAR" \
@@ -104,6 +119,8 @@ hadoop jar "$STREAMING_JAR" \
     -numReduceTasks 1
 echo ">>> JOB 5: COMPLETE."
 
+
+# --- FINAL STEP: DISPLAY RESULTS AND CLEANUP ---
 echo ""
 echo "--- FINAL RESULT ---"
 hdfs dfs -cat "${HDFS_FINAL_OUTPUT}/part-00000"

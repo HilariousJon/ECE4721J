@@ -85,7 +85,7 @@ run_drill:
 	sed 's|__PROJECT_PATH__|$(MAKEFILE_PATH)|g' src/m2/drill_queries.sql \
 	| $(DRILL_HOME)/bin/drill-embedded -f /dev/stdin
 
-run_bfs_spark:
+run_spark_bfs:
 	poetry run spark-submit \
 		--master local[4] \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
@@ -119,5 +119,8 @@ run_mapreduce_setup:
 
 run_mapreduce_bfs_local:
 	bash src/m2/bfs/driver_local.sh
+
+run_mapreduce_bfs_cluster:
+	bash src/m2/bfs/driver.sh
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
