@@ -22,7 +22,7 @@ if __name__ == "__main__":
     print(f"Reading Avro data from: {local_avro_path}")
 
     # Read the original Avro file
-    song_df = spark.read.format("avro").load(avro_path)
+    song_df = spark.read.format("avro").load(local_avro_path)
 
     print(f"Writing data as JSON to: {output_path}")
 
