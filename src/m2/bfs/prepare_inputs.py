@@ -45,7 +45,6 @@ def run_bfs(song_id, meta_db_path, artist_db_path, bfs_depth) -> list:
 def extract_features(song_id, meta_db_path, avro_path, cache_dir):
     logger.info("Extracting features for input song...")
 
-    # 设置缓存
     os.makedirs(cache_dir, exist_ok=True)
     cache_path = os.path.join(cache_dir, f"{song_id}.feature.json")
 
