@@ -85,5 +85,59 @@ run_drill:
 	sed 's|__PROJECT_PATH__|$(MAKEFILE_PATH)|g' src/m2/drill_queries.sql \
 	| $(DRILL_HOME)/bin/drill-embedded -f /dev/stdin
 
+run_spark_bfs_local:
+	poetry run spark-submit \
+		--master local[*] \
+		--deploy-mode client \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		src/m2/bfs/spark_driver.py \
+		-m spark \
+		-a ./data/artist_similarity.db \
+		-c local \
+		-i ./year-data/aggregate_year_prediction.avro \
+		-M ./data/track_metadata.db \
+		-D 2 \
+		-s TRMUOZE12903CDF721
+
+run_spark_bfs_cluster:
+	poetry run spark-submit \
+		--master yarn \
+		--deploy-mode cluster \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		src/m2/bfs/spark_driver.py \
+		-m spark \
+		-a ./data/artist_similarity.db \
+		-c cluster \
+		-i ./year-data/aggregate_year_prediction.avro \
+		-M ./data/track_metadata.db \
+		-D 2 \
+		-s TRMUOZE12903CDF721
+
+run_mapreduce_setup:
+	poetry run spark-submit \
+		--master local[*] \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/bfs/create_song_data.py \
+		./year-data/aggregate_year_prediction.avro \
+		./year-data/tmp
+	mv year-data/tmp/part-00000* year-data/song_data.jsonl
+	rm -rf year-data/tmp
+	poetry run spark-submit \
+		--master local[*] \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/bfs/create_input_features.py \
+		./year-data/aggregate_year_prediction.avro \
+		TRMUOZE12903CDF721 \
+		./year-data/input_song_features.json
+
+run_mapreduce_bfs_local:
+	bash src/m2/bfs/driver_local.sh
+
+run_mapreduce_bfs_cluster:
+	bash src/m2/bfs/driver.sh
 
 .PHONY: commit main extract mount_data_init fmt_json init_env

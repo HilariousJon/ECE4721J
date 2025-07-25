@@ -1,5 +1,3 @@
-
-
 -- Query to find the earliest and latest year in the dataset
 
 SELECT
