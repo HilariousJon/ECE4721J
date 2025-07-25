@@ -16,7 +16,7 @@ FEATURE_FILE="song_features.json"
 CACHE_DIR="./.feature_cache"
 
 PREPARE_SCRIPT="./src/m2/bfs/prepare_inputs.py"
-WORKER_SCRIPT="./src/m2/bfs/hadoop_worker.py"
+WORKER_SCRIPT="./src/m2/bfs/mapreduce_bfs.py"
 UTILS_SCRIPT="./src/m2/bfs/utils.py"
 
 echo "STEP 1: Preparing local inputs (BFS & Feature Extraction)..."
