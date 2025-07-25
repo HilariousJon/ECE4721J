@@ -4,7 +4,7 @@ from loguru import logger
 from fastavro import reader
 from mrjob.job import MRJob
 from mrjob.step import MRStep
-from src.m2.bfs.utils import (
+from utils import (
     get_songs_from_artist,
     calculate_distance,
 )
