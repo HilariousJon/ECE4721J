@@ -3,6 +3,7 @@ import json
 import os
 import numpy as np
 from loguru import logger
+from pathlib import Path
 from fastavro import reader
 from mrjob.job import MRJob
 from mrjob.step import MRStep
@@ -138,10 +139,13 @@ class MRJobWorkflow:
             logger.error(f"Failed to prepare MRJob inputs: {e}")
             return
 
+        utils_path = Path(__file__).parent / "utils.py"
         # configure and run MRJob
         logger.info("Workflow Step 3: Configuring and launching MRJob...")
         mr_job = SongRecommenderMR(
             args=[
+                "--file",
+                str(utils_path),
                 "--meta-db-path",
                 self.meta_db_path,
                 "--avro-path",
