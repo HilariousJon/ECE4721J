@@ -142,8 +142,11 @@ class MRJobWorkflow:
         utils_path = Path(__file__).parent / "utils.py"
         # configure and run MRJob
         logger.info("Workflow Step 3: Configuring and launching MRJob...")
+        bootstrap_script = "pip install loguru numpy==1.23.5 fastavro==1.9.4"
         mr_job = SongRecommenderMR(
             args=[
+                "--bootstrap-script",
+                bootstrap_script,
                 "--file",
                 str(utils_path),
                 "--meta-db-path",
