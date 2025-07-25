@@ -21,7 +21,7 @@ echo "HDFS Working Directory: ${HDFS_WORKDIR}"
 
 # --- JOB 0: SETUP AND UPLOAD ---
 echo ">>> JOB 0: Preparing local files and uploading to HDFS..."
-python3 mapreduce_setup.py "$INPUT_SONG_ID" "$META_DB"
+python3 ./src/m2/bfs/mapreduce_setup.py "$INPUT_SONG_ID" "$META_DB"
 hdfs dfs -mkdir -p "${HDFS_WORKDIR}/input"
 hdfs dfs -put ./year-data/song_data.jsonl "${HDFS_INPUT_SONG_DATA}"
 hdfs dfs -put ./year-data/input_song_features.json "${HDFS_WORKDIR}/"
