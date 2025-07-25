@@ -85,9 +85,10 @@ run_drill:
 	sed 's|__PROJECT_PATH__|$(MAKEFILE_PATH)|g' src/m2/drill_queries.sql \
 	| $(DRILL_HOME)/bin/drill-embedded -f /dev/stdin
 
-run_spark_bfs:
+run_spark_bfs_local:
 	poetry run spark-submit \
-		--master local[4] \
+		--master local[*] \
+		--deploy-mode client \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
 		--conf spark.pyspark.python=$(PYTHON) \
@@ -95,6 +96,22 @@ run_spark_bfs:
 		-m spark \
 		-a ./data/artist_similarity.db \
 		-c local \
+		-i ./year-data/aggregate_year_prediction.avro \
+		-M ./data/track_metadata.db \
+		-D 2 \
+		-s TRMUOZE12903CDF721
+
+run_spark_bfs_cluster:
+	poetry run spark-submit \
+		--master yarn \
+		--deploy-mode cluster \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		src/m2/bfs/spark_driver.py \
+		-m spark \
+		-a ./data/artist_similarity.db \
+		-c cluster \
 		-i ./year-data/aggregate_year_prediction.avro \
 		-M ./data/track_metadata.db \
 		-D 2 \

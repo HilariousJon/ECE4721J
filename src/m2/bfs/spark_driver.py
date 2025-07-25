@@ -113,10 +113,5 @@ def setup_parsers() -> Tuple[str, str, str, str, str, str, int]:
 if __name__ == "__main__":
     args_tuple = setup_parsers()
     mode = args_tuple[0]
-    if mode == "spark":
-        logger.info("Running BFS in Spark mode.")
-        run_bfs_spark(args_tuple)
-    elif mode == "mapreduce":
-        logger.info("Running BFS in MapReduce mode.")
-        workflow = MRJobWorkflow(args_tuple)
-        workflow.run()
+    logger.info("Running BFS in Spark mode.")
+    run_bfs_spark(args_tuple)

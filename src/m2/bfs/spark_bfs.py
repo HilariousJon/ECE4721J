@@ -21,7 +21,6 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
 
     spark = (
         SparkSession.builder.appName("BFS Artist Similarity")
-        .master("local[*]")
         .config("spark.jars.packages", "org.apache.spark:spark-avro_2.12:3.2.4")
         .getOrCreate()
     )
