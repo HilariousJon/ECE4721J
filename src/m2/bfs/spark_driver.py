@@ -13,7 +13,6 @@ try:
 except NameError:
     sys.path.insert(0, os.path.abspath("."))
 from src.m2.bfs.spark_bfs import run_bfs_spark
-from src.m2.bfs.mapreduce_bfs import MRJobWorkflow
 
 
 logger.remove()

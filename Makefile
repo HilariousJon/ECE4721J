@@ -118,6 +118,6 @@ run_mapreduce_setup:
 		./year-data/input_song_features.json
 
 run_mapreduce_bfs:
-	bash src/m2/bfs/driver.sh
+	bash src/m2/bfs/driver_local.sh
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
