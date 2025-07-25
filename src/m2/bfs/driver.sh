@@ -5,7 +5,7 @@ set -e
 STREAMING_JAR="/usr/local/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.2.2.jar"
 HDFS_WORKDIR="/user/$(whoami)/song_similarity_$(date +%s)"
 ARTIST_DB="./data/artist_similarity.db"
-META_DB="t./data/track_metadata.db"
+META_DB="./data/track_metadata.db"
 INPUT_SONG_ID="TRMUOZE12903CDF721" 
 BFS_DEPTH=2
 
@@ -23,8 +23,8 @@ echo "HDFS Working Directory: ${HDFS_WORKDIR}"
 echo ">>> JOB 0: Preparing local files and uploading to HDFS..."
 python3 mapreduce_setup.py "$INPUT_SONG_ID" "$META_DB"
 hdfs dfs -mkdir -p "${HDFS_WORKDIR}/input"
-hdfs dfs -put song_data.jsonl "${HDFS_INPUT_SONG_DATA}"
-hdfs dfs -put input_song_features.json "${HDFS_WORKDIR}/"
+hdfs dfs -put ./year-data/song_data.jsonl "${HDFS_INPUT_SONG_DATA}"
+hdfs dfs -put ./year-data/input_song_features.json "${HDFS_WORKDIR}/"
 hdfs dfs -put initial_artists.txt "${HDFS_WORKDIR}/input/"
 echo "$INPUT_SONG_ID" > input_song_id.txt 
 hdfs dfs -put input_song_id.txt "${HDFS_WORKDIR}/"

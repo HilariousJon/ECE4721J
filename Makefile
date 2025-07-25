@@ -108,8 +108,7 @@ run_mapreduce_setup:
 		./year-data/aggregate_year_prediction.avro \
 		./year-data/tmp
 	mv year-data/tmp/part-00000* year-data/song_data.jsonl
-
-run_mapreduce_input_setup:
+	rm -rf year-data/tmp
 	poetry run spark-submit \
 		--master local[*] \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
