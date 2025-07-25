@@ -102,10 +102,11 @@ run_bfs_spark:
 
 run_mapreduce_setup:
 	poetry run spark-submit \
-	--packages org.apache.spark:spark-avro_2.12:3.2.4 \
-	src/m2/bfs/create_song_data.py \
-	./year-data/aggregate_year_prediction.avro \
-	./temp_json_output
+		--master local[*] \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/bfs/create_song_data.py \
+		./year-data/aggregate_year_prediction.avro \
+		./temp_json_output
 
 run_mapreduce_bfs:
 	bash src/m2/bfs/driver.sh
