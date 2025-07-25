@@ -39,26 +39,32 @@ echo ">>> JOB 1: Simulating Iterative BFS for depth ${BFS_DEPTH}..."
 BFS_INPUT="${LOCAL_WORK_DIR}/initial_artists.txt"
 for i in $(seq 1 $BFS_DEPTH); do
     echo "  -> BFS Depth ${i}"
-    # Define output for this iteration.
     BFS_OUTPUT_TEMP="${LOCAL_WORK_DIR}/bfs_output_temp.txt"
     
-    # Simulate the Hadoop environment: copy necessary files and 'cd' into the work dir.
-    # This ensures the mapper can find 'artist_similarity.db' in its CWD.
+    # The mapper expands the frontier.
     (
         cd "${LOCAL_WORK_DIR}" && \
         cp ../${ARTIST_DB} . && \
         cat "$(basename ${BFS_INPUT})" | \
         python3 ../${PYTHON_SCRIPTS_DIR}/mapper_bfs.py | \
-        sort -k1,1 | \
-        python3 ../${PYTHON_SCRIPTS_DIR}/reducer_bfs.py > "$(basename ${BFS_OUTPUT_TEMP})"
+        sort -u > "$(basename ${BFS_OUTPUT_TEMP})"
     )
     
     # The output of this iteration becomes the input for the next.
     mv "${BFS_OUTPUT_TEMP}" "${BFS_INPUT}"
+    
+    NUM_ARTISTS=$(cut -f1 ${BFS_INPUT} | sort -u | wc -l)
+    echo "  -> Depth ${i} finished. Found ${NUM_ARTISTS} unique artists."
 done
-BFS_FINAL_OUTPUT=$BFS_INPUT
-echo ">>> JOB 1: COMPLETE. Final artist list is in ${BFS_FINAL_OUTPUT}"
 
+# The reducer produce the final, clean list.
+BFS_FINAL_OUTPUT_WITH_TAGS=$BFS_INPUT
+BFS_FINAL_OUTPUT="${LOCAL_WORK_DIR}/bfs_final_artists.txt"
+cat "${BFS_FINAL_OUTPUT_WITH_TAGS}" | \
+    python3 "${PYTHON_SCRIPTS_DIR}/reducer_bfs.py" | \
+    cut -f1 > "${BFS_FINAL_OUTPUT}"
+
+echo ">>> JOB 1: COMPLETE. Final artist list is in ${BFS_FINAL_OUTPUT}"
 
 # --- JOB 2: GET SONGS FROM ARTISTS ---
 echo ">>> JOB 2: Simulating Get Songs..."
