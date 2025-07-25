@@ -48,10 +48,13 @@ hdfs dfs -put -f $ARTIST_LIST_FILE $INPUT_DIR_STEP1/
 HADOOP_STREAMING_JAR="/home/hadoopuser/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.2.2.jar"
 FILES_TO_UPLOAD="$WORKER_SCRIPT,$UTILS_SCRIPT,$META_DB,$AVRO_DATA"
 MAPRED_ENV="-D mapred.child.env=META_DB_PATH=$(basename $META_DB),AVRO_PATH=$(basename $AVRO_DATA),INPUT_TRACK_ID=$INPUT_TRACK_ID,INPUT_FEATURES_JSON='$INPUT_FEATURES_JSON'"
+CHILD_ENV_VALUE="META_DB_PATH=$(basename $META_DB),AVRO_PATH=$(basename $AVRO_DATA),INPUT_TRACK_ID=$INPUT_TRACK_ID,INPUT_FEATURES_JSON=$INPUT_FEATURES_JSON"
 
 echo "STEP 3: Running MapReduce Job 1 (Top 200 Songs)..."
 hadoop jar $HADOOP_STREAMING_JAR $MAPRED_ENV \
-    -D mapreduce.job.name="SongRec - Step 1" -D mapreduce.job.reduces=1 \
+    -D mapreduce.job.name="SongRec - Step 1" \
+    -D "mapred.child.env=$CHILD_ENV_VALUE" \
+    -D mapreduce.job.reduces=1 \
     -files $FILES_TO_UPLOAD \
     -input $INPUT_DIR_STEP1 \
     -output $OUTPUT_DIR_STEP1 \
