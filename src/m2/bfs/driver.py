@@ -13,6 +13,8 @@ try:
 except NameError:
     sys.path.insert(0, os.path.abspath("."))
 from src.m2.bfs.spark_bfs import run_bfs_spark
+from src.m2.bfs.mapreduce_bfs import MRJobWorkflow
+
 
 logger.remove()
 logger.add(
@@ -110,4 +112,12 @@ def setup_parsers() -> Tuple[str, str, str, str, str, str, int]:
 
 
 if __name__ == "__main__":
-    run_bfs_spark(setup_parsers())
+    args_tuple = setup_parsers()
+    mode = args_tuple[0]
+    if mode == "spark":
+        logger.info("Running BFS in Spark mode.")
+        run_bfs_spark(args_tuple)
+    elif mode == "mapreduce":
+        logger.info("Running BFS in MapReduce mode.")
+        workflow = MRJobWorkflow(args_tuple)
+        workflow.run()

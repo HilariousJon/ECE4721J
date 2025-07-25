@@ -100,4 +100,14 @@ run_bfs_spark:
 		-D 2 \
 		-s TRMUOZE12903CDF721
 
+run_mapreduce_bfs:
+	poetry run $(PYTHON) src/m2/bfs/driver.py \
+		-m mapreduce \
+		-a ./data/artist_similarity.db \
+		-c local \
+		-i ./year-data/aggregate_year_prediction.avro \
+		-M ./data/track_metadata.db \
+		-D 2 \
+		-s TRMUOZE12903CDF721
+
 .PHONY: commit main extract mount_data_init fmt_json init_env
