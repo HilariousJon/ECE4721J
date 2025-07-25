@@ -145,7 +145,7 @@ class MRJobWorkflow:
         bootstrap_script = "pip install loguru numpy==1.23.5 fastavro==1.9.4"
         mr_job = SongRecommenderMR(
             args=[
-                "--bootstrap-script",
+                "--bootstrap",
                 bootstrap_script,
                 "--file",
                 str(utils_path),
