@@ -215,7 +215,7 @@ def run_bfs_spark(
         for idx, item in enumerate(similar_song_lists):
             similarity_score, (title, artist, tid) = item
             logger.info(f"Rank {idx + 1}:")
-            logger.success("Most similar song found:")
+            logger.success("Similar song found:")
             logger.success(f"  Song name: {title}")
             logger.success(f"  Artist: {artist}")
             logger.success(f"  Track ID: {tid}")
