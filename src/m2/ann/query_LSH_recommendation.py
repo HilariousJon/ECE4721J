@@ -7,8 +7,6 @@ from pyspark.ml.feature import BucketedRandomProjectionLSHModel
 from pyspark.ml.linalg import Vectors, VectorUDT
 from pyspark.sql.functions import col, udf, struct
 from loguru import logger
-from pyspark.ml.linalg import VectorUDT
-
 
 logger.remove()
 logger.add(
@@ -17,7 +15,6 @@ logger.add(
     format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
 )
 
-# --- Feature engineering logic, identical to the build script ---
 SCALAR_FEATURES_COUNT = 9
 TIMBRE_DIMS = 90
 TOTAL_DIMS = SCALAR_FEATURES_COUNT + TIMBRE_DIMS
@@ -54,7 +51,7 @@ def create_and_normalize_vector(row):
 def query_lsh_weighted(
     app_name: str, avro_path: str, model_path: str, weighted_tracks: list, k: int = 10
 ):
-    logger.info("--- Starting LSH Model Query with Weighted Taste Vector ---")
+    logger.info("--- Starting LSH Model Query with Lean Memory Strategy ---")
 
     spark = (
         SparkSession.builder.appName(app_name)
@@ -66,7 +63,9 @@ def query_lsh_weighted(
 
     # Load the LSH model
     logger.info(f"Loading LSH model from {model_path}...")
-    lsh_model = BucketedRandomProjectionLSHModel.load(f"file://{os.path.abspath(model_path)}")
+    lsh_model = BucketedRandomProjectionLSHModel.load(
+        f"file://{os.path.abspath(model_path)}"
+    )
 
     # Load the full dataset
     logger.info(f"Loading full dataset from {avro_path}...")
@@ -76,17 +75,19 @@ def query_lsh_weighted(
         .na.fill(0.0, subset=["song_hotttnesss"])
     )
 
-    # Apply feature engineering to the full dataset
+    # 3. Apply feature engineering
     vectorized_df = song_df.withColumn(
         "normFeatures",
         create_and_normalize_vector(struct(*scalar_feature_cols, "segments_timbre")),
     )
-    vectorized_df.persist()
+
+    logger.info(
+        "Feature engineering pipeline defined. Caching is disabled for lean memory usage."
+    )
 
     # Create the weighted "Taste Vector"
     logger.info("Creating weighted taste vector from input tracks...")
 
-    # Parse input tracks and weights
     input_tracks = {}
     for track_info in weighted_tracks:
         try:
@@ -98,10 +99,8 @@ def query_lsh_weighted(
             )
             spark.stop()
             return
-
     input_track_ids = list(input_tracks.keys())
 
-    # Filter the DataFrame to get only the vectors for the input tracks
     logger.debug(f"Fetching vectors for tracks: {input_track_ids}")
     input_vectors_df = (
         vectorized_df.filter(col("track_id").isin(input_track_ids))
@@ -114,30 +113,26 @@ def query_lsh_weighted(
         spark.stop()
         return
 
-    # Calculate the weighted average vector on the driver using Numpy
+    # Calculate the weighted average vector on the driver (this is a small, local operation)
     taste_vector = np.zeros(TOTAL_DIMS, dtype="float64")
     total_weight = 0.0
-
     for row in input_vectors_df:
         track_id = row.track_id
         vector = row.normFeatures.toArray()
         weight = input_tracks[track_id]
-
         taste_vector += vector * weight
         total_weight += weight
-        logger.debug(f"Added track '{track_id}' with weight {weight}")
 
     if total_weight > 0:
         taste_vector /= total_weight
 
-    # Normalize the final taste vector before querying
     norm = np.linalg.norm(taste_vector)
     taste_vector_normalized = taste_vector / norm if norm > 0 else taste_vector
-
     query_vector = Vectors.dense(taste_vector_normalized)
     logger.success("Weighted taste vector created and normalized.")
 
-    # Perform the approximate nearest neighbor search using the taste vector
+    # Perform the ANN search
+    # Spark will manage memory by streaming data from disk instead of holding it all.
     logger.info(f"Performing ANN search for {k} neighbors...")
     results_df = lsh_model.approxNearestNeighbors(
         vectorized_df, query_vector, k + len(input_track_ids)
@@ -146,7 +141,7 @@ def query_lsh_weighted(
     logger.info(f"--- Top {k} Similar Songs to Your Blended Taste (by LSH) ---")
     results = results_df.collect()
 
-    # Filter out the input songs themselves and display results
+    # Display results...
     count = 0
     for row in results:
         if row.track_id not in input_track_ids and count < k:
@@ -164,6 +159,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Query a Spark LSH model to find similar songs based on a weighted taste profile."
     )
+    # (Arguments are the same as before)
     parser.add_argument(
         "-a", "--avro", required=True, type=str, help="Path to the original Avro file."
     )
