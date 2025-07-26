@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+import sys
 import os
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import BucketedRandomProjectionLSHModel
