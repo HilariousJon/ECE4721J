@@ -146,18 +146,18 @@ run_ann_HNSW_build:
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/ann/build_ann_HNSW_index.py \
 		-i ./year-data/aggregate_year_prediction.avro \
-		-o ./year-data/index \
+		-o ./year-data/index_HNSW \
 
 query_ann_HNSW:
 	poetry run $(PYTHON) src/m2/ann/query_HNSW_recommendation.py \
-		-i ./year-data/index \
+		-i ./year-data/index_HNSW \
 		-k 100 \
 		--track "TRMMMYQ128F932D901:0.6" \
 		--track "TRMMMWA128F426B589:0.2" \
 		--track "TRMMMRX128F93187D9:0.2"
-# song are:
-# first: Faster pussycat - Silent Night
-# second: Der Mystic - Tangle of Aspens
-# third: Hudson Mohawke - No One Could Ever
+	# song are:
+	# first: Faster pussycat - Silent Night
+	# second: Der Mystic - Tangle of Aspens
+	# third: Hudson Mohawke - No One Could Ever
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
