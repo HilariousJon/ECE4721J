@@ -75,7 +75,7 @@ def query_lsh_weighted(
         .na.fill(0.0, subset=["song_hotttnesss"])
     )
 
-    # 3. Apply feature engineering
+    # Apply feature engineering
     vectorized_df = song_df.withColumn(
         "normFeatures",
         create_and_normalize_vector(struct(*scalar_feature_cols, "segments_timbre")),
@@ -141,7 +141,6 @@ def query_lsh_weighted(
     logger.info(f"--- Top {k} Similar Songs to Your Blended Taste (by LSH) ---")
     results = results_df.collect()
 
-    # Display results...
     count = 0
     for row in results:
         if row.track_id not in input_track_ids and count < k:
@@ -159,7 +158,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Query a Spark LSH model to find similar songs based on a weighted taste profile."
     )
-    # (Arguments are the same as before)
     parser.add_argument(
         "-a", "--avro", required=True, type=str, help="Path to the original Avro file."
     )
