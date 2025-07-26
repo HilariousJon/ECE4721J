@@ -169,6 +169,7 @@ run_ann_LSH_build:
 
 query_ann_LSH:
 	poetry run spark-submit \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/ann/query_LSH_recommendation.py \
 		--avro ./year-data/aggregate_year_prediction.avro \
 		--model ./year-data/index_LSH \
