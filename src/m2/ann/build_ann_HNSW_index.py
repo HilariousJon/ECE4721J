@@ -127,7 +127,8 @@ def build_ann_index_final(
     for i, file_path in enumerate(part_files):
         logger.debug(f"Processing batch {i+1}/{len(part_files)} from '{file_path}'")
         df_batch = pd.read_parquet(file_path)
-        batch_vectors = np.array(df_batch["normFeatures"].tolist()).astype("float32")
+        vectors_list = df_batch["normFeatures"].apply(lambda x: x["values"]).tolist()
+        batch_vectors = np.array(vectors_list).astype("float32")
         batch_ids = df_batch["track_id"].tolist()
         index.add(batch_vectors)
         all_track_ids.extend(batch_ids)
