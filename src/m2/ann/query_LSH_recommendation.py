@@ -9,8 +9,17 @@ from loguru import logger
 from pyspark.ml.linalg import VectorUDT
 
 
+logger.remove()
+logger.add(
+    sys.stderr,
+    level="INFO",
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+)
+
+# --- Feature engineering logic, identical to the build script ---
 SCALAR_FEATURES_COUNT = 9
 TIMBRE_DIMS = 90
+TOTAL_DIMS = SCALAR_FEATURES_COUNT + TIMBRE_DIMS
 scalar_feature_cols = [
     "loudness",
     "tempo",
@@ -41,10 +50,10 @@ def create_and_normalize_vector(row):
     return Vectors.dense(normalized_vector)
 
 
-def query_lsh(
-    app_name: str, avro_path: str, model_path: str, query_track_id: str, k: int = 10
+def query_lsh_weighted(
+    app_name: str, avro_path: str, model_path: str, weighted_tracks: list, k: int = 10
 ):
-    logger.info("--- Starting LSH Model Query ---")
+    logger.info("--- Starting LSH Model Query with Weighted Taste Vector ---")
 
     spark = (
         SparkSession.builder.appName(app_name)
@@ -54,11 +63,11 @@ def query_lsh(
         .getOrCreate()
     )
 
-    # Load the distributed LSH model
+    # Load the LSH model
     logger.info(f"Loading LSH model from {model_path}...")
     lsh_model = BucketedRandomProjectionLSHModel.load(model_path)
 
-    # Load the full dataset to search within
+    # Load the full dataset
     logger.info(f"Loading full dataset from {avro_path}...")
     song_df = (
         spark.read.format("avro")
@@ -66,34 +75,80 @@ def query_lsh(
         .na.fill(0.0, subset=["song_hotttnesss"])
     )
 
-    # Apply the same feature engineering to the full dataset
-    # In a production environment, this vectorized DataFrame would be saved in Parquet format to speed up loading.
+    # Apply feature engineering to the full dataset
     vectorized_df = song_df.withColumn(
         "normFeatures",
         create_and_normalize_vector(struct(*scalar_feature_cols, "segments_timbre")),
     )
     vectorized_df.persist()
 
-    # Find the query song and extract its vector
-    logger.info(f"Finding query vector for track_id: {query_track_id}...")
-    query_song_row = vectorized_df.filter(col("track_id") == query_track_id).first()
-    if not query_song_row:
-        logger.error(f"Query track_id '{query_track_id}' not found in the dataset.")
+    # Create the weighted "Taste Vector"
+    logger.info("Creating weighted taste vector from input tracks...")
+
+    # Parse input tracks and weights
+    input_tracks = {}
+    for track_info in weighted_tracks:
+        try:
+            track_id, weight = track_info.split(":")
+            input_tracks[track_id] = float(weight)
+        except ValueError:
+            logger.error(
+                f"Invalid format for --track: '{track_info}'. Please use 'TRACK_ID:WEIGHT'."
+            )
+            spark.stop()
+            return
+
+    input_track_ids = list(input_tracks.keys())
+
+    # Filter the DataFrame to get only the vectors for the input tracks
+    logger.debug(f"Fetching vectors for tracks: {input_track_ids}")
+    input_vectors_df = (
+        vectorized_df.filter(col("track_id").isin(input_track_ids))
+        .select("track_id", "normFeatures")
+        .collect()
+    )
+
+    if not input_vectors_df:
+        logger.error("None of the input track IDs were found in the dataset.")
         spark.stop()
         return
-    query_vector = query_song_row.normFeatures
 
-    # Perform the approximate nearest neighbor search
+    # Calculate the weighted average vector on the driver using Numpy
+    taste_vector = np.zeros(TOTAL_DIMS, dtype="float64")
+    total_weight = 0.0
+
+    for row in input_vectors_df:
+        track_id = row.track_id
+        vector = row.normFeatures.toArray()
+        weight = input_tracks[track_id]
+
+        taste_vector += vector * weight
+        total_weight += weight
+        logger.debug(f"Added track '{track_id}' with weight {weight}")
+
+    if total_weight > 0:
+        taste_vector /= total_weight
+
+    # Normalize the final taste vector before querying
+    norm = np.linalg.norm(taste_vector)
+    taste_vector_normalized = taste_vector / norm if norm > 0 else taste_vector
+
+    query_vector = Vectors.dense(taste_vector_normalized)
+    logger.success("Weighted taste vector created and normalized.")
+
+    # Perform the approximate nearest neighbor search using the taste vector
     logger.info(f"Performing ANN search for {k} neighbors...")
-    results_df = lsh_model.approxNearestNeighbors(vectorized_df, query_vector, k + 1)
+    results_df = lsh_model.approxNearestNeighbors(
+        vectorized_df, query_vector, k + len(input_track_ids)
+    )
 
-    logger.info(f"--- Top {k} Similar Songs to '{query_song_row.title}' (by LSH) ---")
+    logger.info(f"--- Top {k} Similar Songs to Your Blended Taste (by LSH) ---")
     results = results_df.collect()
 
-    # Filter out the query song itself and display results
+    # Filter out the input songs themselves and display results
     count = 0
     for row in results:
-        if row.track_id != query_track_id and count < k:
+        if row.track_id not in input_track_ids and count < k:
             print(f"  - Rank {count + 1}:")
             print(f"    Track ID: {row.track_id}")
             print(f"    Title: {row.title}")
@@ -106,7 +161,7 @@ def query_lsh(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Query a Spark LSH model to find similar songs."
+        description="Query a Spark LSH model to find similar songs based on a weighted taste profile."
     )
     parser.add_argument(
         "-a", "--avro", required=True, type=str, help="Path to the original Avro file."
@@ -119,15 +174,15 @@ if __name__ == "__main__":
         help="Path to the saved LSH model directory.",
     )
     parser.add_argument(
-        "-q",
-        "--query",
+        "-t",
+        "--track",
         required=True,
-        type=str,
-        help="The track_id of the song to query.",
+        action="append",
+        help="Input track in 'TRACK_ID:WEIGHT' format. Can be specified multiple times.",
     )
     parser.add_argument(
         "-k", type=int, default=10, help="Number of recommendations to return."
     )
     args = parser.parse_args()
 
-    query_lsh("SongLSHQuery", args.avro, args.model, args.query, args.k)
+    query_lsh_weighted("SongLSHQuery", args.avro, args.model, args.track, args.k)
