@@ -3,6 +3,8 @@ import os
 import pickle
 import argparse
 import numpy as np
+import pandas as pd
+import shutil
 import faiss
 from pyspark.ml.linalg import VectorUDT
 from pyspark.sql import SparkSession
@@ -89,7 +91,7 @@ def build_ann_index_batched(
     )
     logger.success("Feature engineering complete.")
 
-    # [NEW STRATEGY] Save Processed Vectors to Disk
+    # Save Processed Vectors to Disk
     logger.info(
         "[Step 3/4] Saving processed vectors to Parquet format to free up Spark memory..."
     )
@@ -98,7 +100,6 @@ def build_ann_index_batched(
     intermediate_path = "./processed_vectors.parquet"
     vectorized_df.write.mode("overwrite").parquet(intermediate_path)
 
-    # We are done with Spark for now. Release its memory.
     spark.stop()
     logger.success(
         f"Spark processing finished. Intermediate data saved to '{intermediate_path}'."
@@ -109,10 +110,6 @@ def build_ann_index_batched(
         "[Step 4/4] Building Faiss index from Parquet files (outside of Spark)..."
     )
 
-    # Now, use a regular Python process with Pandas to read the data in chunks.
-    # This avoids loading all 1M vectors into memory at once.
-    import pandas as pd
-
     index_file = f"{output_prefix}_index.ann"
     id_map_file = f"{output_prefix}_id_map.pkl"
     vector_map_file = f"{output_prefix}_vector_map.pkl"
@@ -120,7 +117,6 @@ def build_ann_index_batched(
     # Initialize an empty Faiss index
     index = faiss.IndexHNSWFlat(TOTAL_DIMS, 64, faiss.METRIC_L2)
 
-    # We will build the full mapping in memory, as it's not the memory bottleneck.
     all_track_ids = []
     vector_mapping = {}
 
@@ -158,9 +154,6 @@ def build_ann_index_batched(
     with open(vector_map_file, "wb") as f:
         pickle.dump(vector_mapping, f)
     logger.success(f"Track ID -> Vector mapping saved to: '{vector_map_file}'")
-
-    # Clean up intermediate files
-    import shutil
 
     shutil.rmtree(intermediate_path)
     logger.info(f"Cleaned up intermediate directory: '{intermediate_path}'")
