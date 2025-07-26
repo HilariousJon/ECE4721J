@@ -8,7 +8,6 @@ from src.m2.bfs.utils import (
     get_songs_from_artist,
     merge_lists,
     calculate_distance,
-    select_top_k,
 )
 from loguru import logger
 import time
@@ -211,7 +210,7 @@ def run_bfs_spark(
             lambda candidate_data: calculate_distance(
                 broadcast_input_features.value, candidate_data
             )
-        ).reduce(lambda x: select_top_k(x, num_of_recommends))
+        ).top(num_of_recommends, key=lambda x: x[0])
 
         for idx, item in enumerate(similar_song_lists):
             similarity_score, (title, artist, tid) = item
