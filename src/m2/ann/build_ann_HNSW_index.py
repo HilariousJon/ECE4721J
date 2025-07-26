@@ -105,7 +105,6 @@ def build_ann_index_final(
 
     # --- 4. Save to Parquet (Memory Conservative) ---
     logger.info("[Step 4/5] Saving processed vectors to Parquet format...")
-    intermediate_path = "./processed_vectors.parquet"
     vectorized_df.write.mode("overwrite").parquet(intermediate_path)
     spark.stop()
     logger.success(
