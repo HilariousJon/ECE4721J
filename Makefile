@@ -144,7 +144,7 @@ run_ann_build:
 	poetry run spark-submit \
 		--master local[*] \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
-		src/m2/ann/build_index.py \
+		src/m2/ann/build_ann_HNSW_index.py \
 		-i ./year-data/aggregate_year_prediction.avro \
 		-o ./year-data/index \
 
