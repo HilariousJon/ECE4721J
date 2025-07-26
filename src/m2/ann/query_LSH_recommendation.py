@@ -66,7 +66,7 @@ def query_lsh_weighted(
 
     # Load the LSH model
     logger.info(f"Loading LSH model from {model_path}...")
-    lsh_model = BucketedRandomProjectionLSHModel.load(model_path)
+    lsh_model = BucketedRandomProjectionLSHModel.load(f"file://{os.path.abspath(model_path)}")
 
     # Load the full dataset
     logger.info(f"Loading full dataset from {avro_path}...")
