@@ -140,4 +140,12 @@ run_mapreduce_bfs_local:
 run_mapreduce_bfs_cluster:
 	bash src/m2/bfs/driver.sh
 
+run_ann_build:
+	poetry run spark-submit \
+		--master local[*] \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/ann/build_index.py \
+		-i ./year-data/aggregate_year_prediction.avro \
+		-o ./year-data/index \
+
 .PHONY: commit main extract mount_data_init fmt_json init_env
