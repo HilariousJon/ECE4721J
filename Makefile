@@ -151,9 +151,9 @@ run_ann_HNSW_build:
 query_ann_HNSW:
 	poetry run $(PYTHON) src/m2/ann/query_HNSW_recommendation.py \
 		-i ./year-data/index \
-		-k 10 \
+		-k 100 \
 		--track "TRMMMYQ128F932D901:0.6" \
-		--track "TRMMMWA128F425532C:0.2" \
+		--track "TRMMMWA128F426B589:0.2" \
 		--track "TRMMMRX128F93187D9:0.2"
 # song are:
 # first: Faster pussycat - Silent Night
