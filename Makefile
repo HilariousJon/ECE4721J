@@ -45,7 +45,7 @@ extract:
 	# use API from display_song later
 	$(PYTHON) src/m1/extract.py $(AVRO_FILE) $(OUTPUT_DIR)
 
-build_artists_graph_spark:
+build_artists_graph:
 	# run the spark job to build the artists graph
 	poetry run spark-submit \
 		--master local[4] \
@@ -57,45 +57,10 @@ build_artists_graph_spark:
 		--num-executors 2 \
 		--executor-memory 2g \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
-		src/m2/artistsDis/spark/build_artists_graph_spark.py \
+		src/m2/artistsDis/build_artists_graph.py \
 		--input ./data/aggregate.avro \
 		--output ./data/artists_graph \
 		--threshold 0.5
-
-convert_avro_to_json:
-	# convert the avro file to jsonl format
-	poetry run $(PYTHON) src/m2/artistsDis/mapreduce/convert_avro_to_json.py \
-		--input ./data/aggregate.avro \
-		--output ./data/artists.jsonl
-
-# build_artists_graph_mr:
-# 	# run the mapreduce job to build the artists graph
-# 	ulimit -v 6000000; \
-# 	cpulimit --limit=400 -- \
-# 	poetry run python3 src/m2/artistsDis/mapreduce/build_artists_graph_mr.py \
-# 	--input ./data/artists.jsonl \
-# 	--output ./data/artists_graph_mr.jsonl \
-# 	--topk 50
-
-build_artists_graph_mr:
-	# Stage 1: LSH hashing + clean JSON format
-	mkdir -p data/tmp
-	poetry run $(PYTHON) src/m2/artistsDis/mapreduce/build_artists_graph_stage1.py \
-	--num-hash 20 \
-	--seed 42 \
-	< data/artists.jsonl | \
-	sed 's/\\//g' > data/tmp/lsh_buckets.jsonl
-
-	# Stage 2: Top-K in each bucket
-	poetry run $(PYTHON) src/m2/artistsDis/mapreduce/build_artists_graph_stage2.py \
-	--topk 50 \
-	< data/tmp/lsh_buckets.jsonl > data/tmp/raw_neighbors.jsonl
-
-	# Final merge
-	poetry run $(PYTHON) src/m2/artistsDis/mapreduce/merge_neighbors.py \
-	--input data/tmp/raw_neighbors.jsonl \
-	--output data/artists_graph_mr.jsonl \
-	--topk 50
 
 query_artists_distance:
 	# run the spark job to query the distance between two artists in the graph
@@ -103,7 +68,7 @@ query_artists_distance:
 		--master local[2] \
 		--conf spark.pyspark.driver.python=python3 \
 		--conf spark.pyspark.python=python3 \
-		src/m2/artistsDis/spark/query_artist_distance.py \
+		src/m2/artistsDis/query_artist_distance.py \
 		--graph ./data/artists_graph \
 		--start b\'AR00JIO1187B9A5A15\' \
 		--end b\'AR8KJG41187B9AF8EC\'
