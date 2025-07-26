@@ -1,4 +1,5 @@
 import sys
+import os
 import pickle
 import argparse
 import numpy as np
@@ -43,7 +44,7 @@ def build_ann_index(
     # load data from spark
     logger.info(f"[Step 2/5] Loading Avro data from: {avro_path}...")
     try:
-        song_df = spark.read.format("avro").load(f"file:///{avro_path}")
+        song_df = spark.read.format("avro").load(f"file://{os.path.abspath(avro_path)}")
         song_df = song_df.na.fill(0.0, subset=["song_hotttnesss"])
         logger.info("Avro schema:")
         song_df.printSchema(level=1)
