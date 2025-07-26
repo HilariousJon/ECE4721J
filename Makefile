@@ -1,7 +1,12 @@
 PYTHON=python3
 
+MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
 AVRO_FILE ?= src/m1/songs.avro
 OUTPUT_DIR ?= src/m1/output_h5
+DRILL_PATH ?= ~/mnt/drill
+
+
 
 main:
 	$(PYTHON) src/m1/compress.py 
@@ -14,19 +19,42 @@ init_env:
 aggregate_avro:
 	mkdir -p ./data
 	poetry run spark-submit \
-		--master local[12] \
+		--master local[4] \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
 		--conf spark.pyspark.python=$(PYTHON) \
 		--driver-cores 2 \
-		--driver-memory 8g \
-		--executor-cores 4 \
-		--num-executors 10 \
-		--executor-memory 4g \
+		--driver-memory 3g \
+		--executor-cores 1 \
+		--num-executors 2 \
+		--executor-memory 2g \
+		--conf spark.default.parallelism=2 \
+		--conf spark.local.dir=/tmp/spark_tmp \
 		--py-files src/m1/hdf5_getters.py \
 		src/m1/h5_to_avro.py \
-		-s src/m1/msd.avsc \
+		-s src/m1/msd_meta.avsc \
 		-o ./data/ \
 		-i /mnt/msd_data/data
+	python src/m1/merge_avro.py \
+		 ./data/ \
+		aggregate.avro
+
+agg_avro:
+	python src/m1/h5_to_avro_nonspark.py \
+		-s src/m1/msd_meta.avsc \
+		-o ./data/ \
+		-i /mnt/msd_data/data
+	python src/m1/merge_avro.py \
+		data/ \
+		aggregate.avro
+
+year_avro:
+	python src/m1/h5_to_avro_nonspark.py \
+		-s src/m1/msd_year_prediction.avsc \
+		-o ./year-data/ \
+		-i /mnt/msd_data/data 
+	python src/m1/merge_avro.py \
+		year-data/ \
+		aggregate_year_prediction.avro
 
 mount_data_init:
 	# run it every time you reset your computer
@@ -111,6 +139,66 @@ commit:
 	git commit -m "chore(p1m2): auto backup [build joj]" --allow-empty && git push
 
 fmt_json:
-	cat src/m1/msd.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd.avsc
+	cat src/m1/msd_meta.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_meta.avsc
+	cat src/m1/msd_year_prediction.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_year_prediction.avsc
+
+run_drill:
+	sed 's|__PROJECT_PATH__|$(MAKEFILE_PATH)|g' src/m2/drill_queries.sql \
+	| $(DRILL_HOME)/bin/drill-embedded -f /dev/stdin
+
+run_spark_bfs_local:
+	poetry run spark-submit \
+		--master local[*] \
+		--deploy-mode client \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		src/m2/bfs/spark_driver.py \
+		-m spark \
+		-a ./data/artist_similarity.db \
+		-c local \
+		-i ./year-data/aggregate_year_prediction.avro \
+		-M ./data/track_metadata.db \
+		-D 2 \
+		-s TRMUOZE12903CDF721
+
+run_spark_bfs_cluster:
+	poetry run spark-submit \
+		--master yarn \
+		--deploy-mode cluster \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		src/m2/bfs/spark_driver.py \
+		-m spark \
+		-a ./data/artist_similarity.db \
+		-c cluster \
+		-i ./year-data/aggregate_year_prediction.avro \
+		-M ./data/track_metadata.db \
+		-D 2 \
+		-s TRMUOZE12903CDF721
+
+run_mapreduce_setup:
+	poetry run spark-submit \
+		--master local[*] \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/bfs/create_song_data.py \
+		./year-data/aggregate_year_prediction.avro \
+		./year-data/tmp
+	mv year-data/tmp/part-00000* year-data/song_data.jsonl
+	rm -rf year-data/tmp
+	poetry run spark-submit \
+		--master local[*] \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/bfs/create_input_features.py \
+		./year-data/aggregate_year_prediction.avro \
+		TRMUOZE12903CDF721 \
+		./year-data/input_song_features.json
+
+run_mapreduce_bfs_local:
+	bash src/m2/bfs/driver_local.sh
+
+run_mapreduce_bfs_cluster:
+	bash src/m2/bfs/driver.sh
 
 .PHONY: commit main extract mount_data_init fmt_json init_env
