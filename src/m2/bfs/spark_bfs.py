@@ -1,13 +1,14 @@
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, broadcast
-from typing import List, Tuple, Any
+from typing import List, Tuple
 from src.m2.bfs.utils import (
     get_artist_from_song,
     get_artist_neighbor,
     get_songs_from_artist,
     merge_lists,
     calculate_distance,
+    select_top_k,
 )
 from loguru import logger
 import time
@@ -16,8 +17,20 @@ import numpy as np
 import heapq
 
 
-def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> None:
-    (_, artist_db_path, _, avro_path, song_id, meta_db_path, bfs_depth) = args_wrapper
+def run_bfs_spark(
+    args_wrapper: Tuple[str, str, str, str, str, str, int, bool, int],
+) -> None:
+    (
+        _,
+        artist_db_path,
+        _,
+        avro_path,
+        song_id,
+        meta_db_path,
+        bfs_depth,
+        exclude_current_artist,
+        num_of_recommends,
+    ) = args_wrapper
 
     spark = (
         SparkSession.builder.appName("BFS Artist Similarity")
@@ -56,7 +69,10 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
                 .map(lambda x: get_artist_neighbor(x, artist_db_path))
                 .reduce(merge_lists)
             )
-            artists.extend(newly_found_artists)
+            if not (i == 0 and exclude_current_artist):
+                artists = newly_found_artists
+            else:
+                artists.extend(newly_found_artists)
             logger.info(
                 f"Depth {i + 1}: Artist list size is now {len(artists)} (including duplicates from previous layers)."
             )
@@ -191,19 +207,21 @@ def run_bfs_spark(args_wrapper: Tuple[str, str, str, str, str, str, int]) -> Non
             )
             return
 
-        most_similar_song = features_rdd.map(
+        similar_song_lists = features_rdd.map(
             lambda candidate_data: calculate_distance(
                 broadcast_input_features.value, candidate_data
             )
-        ).reduce(max)
+        ).reduce(lambda x: select_top_k(x, num_of_recommends))
 
-        similarity_score, (title, artist, tid) = most_similar_song
-
-        logger.success("Most similar song found:")
-        logger.success(f"  Song name: {title}")
-        logger.success(f"  Artist: {artist}")
-        logger.success(f"  Track ID: {tid}")
-        logger.success(f"  Similarity score: {similarity_score:.4f}")
+        for idx, item in enumerate(similar_song_lists):
+            similarity_score, (title, artist, tid) = item
+            logger.info(f"Rank {idx + 1}:")
+            logger.success("Most similar song found:")
+            logger.success(f"  Song name: {title}")
+            logger.success(f"  Artist: {artist}")
+            logger.success(f"  Track ID: {tid}")
+            logger.success(f"  Similarity score: {similarity_score:.4f}")
+            logger.info(" ")
 
     finally:
         logger.info("Closing Spark Session...")

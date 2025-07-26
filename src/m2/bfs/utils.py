@@ -73,3 +73,12 @@ def calculate_distance(
     # score = cosine_similarity - l1_distance
     score = cosine_similarity
     return (score, song2_metadata)
+
+
+def select_top_k(
+    song_with_scores: List[Tuple[float, tuple]], k: int
+) -> List[Tuple[float, tuple]]:
+    if len(song_with_scores) < k:
+        logger.warning(f"Not enough scores to select top {k}. Returning all scores.")
+        return song_with_scores
+    return sorted(song_with_scores, key=lambda x: x[0], reverse=True)[:k]

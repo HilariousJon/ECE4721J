@@ -99,6 +99,8 @@ run_spark_bfs_local:
 		-i ./year-data/aggregate_year_prediction.avro \
 		-M ./data/track_metadata.db \
 		-D 2 \
+		--exclude_current_artist \
+		--num_of_recommends 20 \
 		-s TRMUOZE12903CDF721
 
 run_spark_bfs_cluster:
@@ -115,6 +117,8 @@ run_spark_bfs_cluster:
 		-i ./year-data/aggregate_year_prediction.avro \
 		-M ./data/track_metadata.db \
 		-D 2 \
+		--exclude_current_artist \
+		--num_of_recommends 20 \
 		-s TRMUOZE12903CDF721
 
 run_mapreduce_setup:
