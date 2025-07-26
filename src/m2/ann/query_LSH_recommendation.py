@@ -144,11 +144,13 @@ def query_lsh_weighted(
     count = 0
     for row in results:
         if row.track_id not in input_track_ids and count < k:
+            l2_distance = row.distCol
+            cosine_similarity = 1 - (l2_distance**2 / 2)
             print(f"  - Rank {count + 1}:")
             print(f"    Track ID: {row.track_id}")
             print(f"    Title: {row.title}")
             print(f"    Artist: {row.artist_name}")
-            print(f"    Distance (Euclidean): {row.distCol:.4f}\n")
+            print(f"    Cosine Similarity: {cosine_similarity:.4f}\n")
             count += 1
 
     spark.stop()
