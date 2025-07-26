@@ -32,7 +32,7 @@ def build_ann_index_final(
     logger.info("--- Starting ANN Index Building Pipeline (Final Memory Strategy) ---")
 
     CWD = os.getcwd()
-    intermediate_path = f"file://{os.path.join(CWD, 'processed_vectors.parquet')}"
+    intermediate_path = os.path.join(CWD, "processed_vectors.parquet")
     logger.info(f"Using absolute path for intermediate data: {intermediate_path}")
     # --- 1. Spark Session Initialization with a more conservative driver memory ---
     logger.info("[Step 1/5] Initializing Spark Session...")
@@ -105,7 +105,7 @@ def build_ann_index_final(
 
     # --- 4. Save to Parquet (Memory Conservative) ---
     logger.info("[Step 4/5] Saving processed vectors to Parquet format...")
-    vectorized_df.write.mode("overwrite").parquet(intermediate_path)
+    vectorized_df.write.mode("overwrite").parquet(f"file://{intermediate_path}")
     spark.stop()
     logger.success(
         f"Spark processing finished. Intermediate data saved to '{intermediate_path}'."
