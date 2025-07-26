@@ -137,8 +137,8 @@ song_recommend:
 		--features ./year-data/aggregate_year_prediction.avro \
 		--seeds SOAAAQN12AB01856D3 SOAADAD12A8C13D5B0 SOAAGJG12A8C141F3F \
 		--topk 10 \
-		--w_sim 0.5 \
-		--w_hot 0.3 \
+		--w_sim 0.6 \
+		--w_hot 0.2 \
 		--w_bfs 0.2
 
 commit:
