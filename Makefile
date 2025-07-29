@@ -1,7 +1,13 @@
 PYTHON=python3
 
+PROJECT_ROOT := $(shell pwd)
 AVRO_FILE ?= src/m1/songs.avro
 OUTPUT_DIR ?= src/m1/output_h5
+MODEL_DIR=$(PROJECT_ROOT)/models
+RESULTS_DIR=$(PROJECT_ROOT)/results
+AVRO_PATH=$(PROJECT_ROOT)/year-data/aggregate_year_prediction.avro
+OUTPUT_PATH=$(PROJECT_ROOT)/outputs/prediction_results.csv
+CSV_PATH=$(PROJECT_ROOT)/yearpredictionmsd/YearPredictionMSD.csv
 
 main:
 	$(PYTHON) src/m1/compress.py 
@@ -78,60 +84,37 @@ fmt_json:
 
 # TODO: remove absolute path in the makefile
 # remain bugs in the mini-batch-gd model
-run_random_forest:
+
+train_%:
 	poetry run spark-submit \
 		--master local[1] \
+		--deploy-mode client \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
 		--conf spark.pyspark.python=$(PYTHON) \
 		src/year_prediction/ml_models.py \
-		--model 2 \
-		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
-		--output results \
+		--model $(subst train_,,$@) \
+		--filepath $(CSV_PATH) \
+		--model_output $(MODEL_DIR)/$(subst train_,,$@)_model \
+		--output $(RESULTS_DIR) \
 		--tolerance 5.0
 
-run_ridge_regression:
+predict:
 	poetry run spark-submit \
-		--master local[1] \
+		--master local \
+		--deploy-mode client \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		--conf spark.pyspark.driver.python=$(PYTHON) \
 		--conf spark.pyspark.python=$(PYTHON) \
-		src/year_prediction/ml_models.py \
-		--model 1 \
-		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
-		--output results \
-		--tolerance 5.0
+		src/year_prediction/prediction.py \
+		--model_path $(MODEL_DIR)/$(MODEL_NAME)_model \
+		--avro_path $(AVRO_PATH) \
+		--output_path $(OUTPUT_PATH)
 
-run_GBT:
-	poetry run spark-submit \
-		--master local[1] \
-		--conf spark.pyspark.driver.python=$(PYTHON) \
-		--conf spark.pyspark.python=$(PYTHON) \
-		src/year_prediction/ml_models.py \
-		--model 3 \
-		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
-		--output results \
-		--tolerance 5.0
+run_%: train_% predict_%
+	@echo "Completed training and prediction for model: $(subst run_,,$@)"
 
-run_mini_batch_gd:
-	poetry run spark-submit \
-		--master local[1] \
-		--conf spark.pyspark.driver.python=$(PYTHON) \
-		--conf spark.pyspark.python=$(PYTHON) \
-		src/year_prediction/ml_models.py \
-		--model 4 \
-		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
-		--output results \
-		--tolerance 5.0
-
-run_xgboost:
-	poetry run spark-submit \
-		--master local[1] \
-		--conf spark.pyspark.driver.python=$(PYTHON) \
-		--conf spark.pyspark.python=$(PYTHON) \
-		src/year_prediction/ml_models.py \
-		--model 5 \
-		--filepath /home/hadoopuser/ece4721-project/year-data/YearPredictionMSD.csv \
-		--output results \
-		--tolerance 5.0
+predict_%:
+	$(MAKE) predict MODEL_NAME=$(subst predict_,,$@)
 
 .PHONY: commit main extract mount_data_init fmt_json init_env run_random_forest \
 run_ridge_regression run_GBT run_mini_batch_gd aggregate_avro agg_avro year_avro mount_data unmount_data run_xgboost
