@@ -1,31 +1,35 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 from pyspark.ml.linalg import Vectors, VectorUDT
-from pyspark.sql.types import DoubleType
+from pyspark.sql.types import StructType, StructField
 from pyspark.sql.functions import udf
 
-spark = SparkSession.builder.appName("MSD_Timbre_Features").getOrCreate()
+def extract_timbre_features(spark, avro_path):
+    df = spark.read.format("avro").load(avro_path)
+    
+    def split_timbre(timbre_array): # split timbre to 12 mean and 78 cov
+        mean = Vectors.dense(timbre_array[:12])
+        cov = Vectors.dense(timbre_array[12:])
+        return (mean, cov)
+    
+    split_udf = udf(
+        split_timbre,
+        StructType([
+            StructField("timbre_mean", VectorUDT()),
+            StructField("timbre_cov", VectorUDT())
+        ])
+    )
+    
+    return df.select(
+        col("track_id"),
+        col("year"),
+        split_udf(col("segments_timbre")).alias("timbre")
+    ).select(
+        "track_id",
+        "year",
+        col("timbre.timbre_mean").alias("timbre_mean"),
+        col("timbre.timbre_cov").alias("timbre_cov")
+    )
 
-df = spark.read.format("avro").load(avro_path)
-
-def split_timbre_features(features):
-    timbre_mean = features[:12] # mean
-    timbre_cov = features[12:] # covariance
-    return (Vectors.dense(timbre_mean), Vectors.dense(timbre_cov))
-
-split_udf = udf(split_timbre_features, 
-                returnType=StructType([
-                    StructField("timbre_mean", VectorUDT()),
-                    StructField("timbre_cov", VectorUDT())
-                ]))
-
-processed_df = df.select(
-    col("year").alias("label"),
-    split_udf(col("segments_timbre")).alias("timbre_features")
-).select(
-    "label",
-    col("timbre_features.timbre_mean").alias("timbre_mean"),
-    col("timbre_features.timbre_cov").alias("timbre_cov")
-)
-
-processed_df.show(3, truncate=False)
+if __name__ == "__main__":
+    extract_timbre_features()
