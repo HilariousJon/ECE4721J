@@ -26,7 +26,7 @@ logger.add(
 )
 
 
-def setup_parsers() -> Tuple[str, str, str, str, str, str, int]:
+def setup_parsers() -> Tuple[str, str, str, str, str, str, int, bool, int]:
     parser = argparse.ArgumentParser(
         description="Running BFS algorithms for artists graph to find similar songs."
     )
@@ -91,7 +91,24 @@ def setup_parsers() -> Tuple[str, str, str, str, str, str, int]:
         default=2,
         help="Depth of BFS to traverse the artist graph",
     )
-
+    parser.add_argument(
+        "-e",
+        "--exclude_current_artist",
+        type=bool,
+        required=False,
+        dest="exclude_current_artist",
+        default=False,
+        help="Exclude the current artist from the BFS traversal",
+    )
+    parser.add_argument(
+        "-n",
+        "--num_of_recommends",
+        type=int,
+        required=False,
+        dest="num_of_recommends",
+        default=1,
+        help="Number of song recommendations to return",
+    )
     args = parser.parse_args()
 
     if args.bfs_depth < 1:
@@ -107,6 +124,8 @@ def setup_parsers() -> Tuple[str, str, str, str, str, str, int]:
         args.song_id,
         args.meta_db_path,
         args.bfs_depth,
+        args.exclude_current_artist,
+        args.num_of_recommends,
     )
 
 

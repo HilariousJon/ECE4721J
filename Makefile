@@ -160,6 +160,8 @@ run_spark_bfs_local:
 		-i ./year-data/aggregate_year_prediction.avro \
 		-M ./data/track_metadata.db \
 		-D 2 \
+		--exclude_current_artist true \
+		--num_of_recommends 20 \
 		-s TRMUOZE12903CDF721
 
 run_spark_bfs_cluster:
@@ -176,6 +178,8 @@ run_spark_bfs_cluster:
 		-i ./year-data/aggregate_year_prediction.avro \
 		-M ./data/track_metadata.db \
 		-D 2 \
+		--exclude_current_artist true \
+		--num_of_recommends 20 \
 		-s TRMUOZE12903CDF721
 
 run_mapreduce_setup:
@@ -200,5 +204,47 @@ run_mapreduce_bfs_local:
 
 run_mapreduce_bfs_cluster:
 	bash src/m2/bfs/driver.sh
+
+run_ann_HNSW_build:
+	poetry run spark-submit \
+		--master local[*] \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/ann/build_ann_HNSW_index.py \
+		-i ./year-data/aggregate_year_prediction.avro \
+		-o ./year-data/index_HNSW
+
+query_ann_HNSW:
+	poetry run $(PYTHON) src/m2/ann/query_HNSW_recommendation.py \
+		-i ./year-data/index_HNSW \
+		-k 100 \
+		--track "TRMMMYQ128F932D901:0.6" \
+		--track "TRMMMWA128F426B589:0.2" \
+		--track "TRMMMRX128F93187D9:0.2"
+	# song are:
+	# first: Faster pussycat - Silent Night
+	# second: Der Mystic - Tangle of Aspens
+	# third: Hudson Mohawke - No One Could Ever
+
+run_ann_LSH_build:
+	poetry run spark-submit \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/ann/build_ann_LSH_index.py \
+		-i ./year-data/aggregate_year_prediction.avro \
+		-o ./year-data/index_LSH
+
+query_ann_LSH:
+	poetry run spark-submit \
+		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
+		src/m2/ann/query_LSH_recommendation.py \
+		--avro ./year-data/aggregate_year_prediction.avro \
+		--model ./year-data/index_LSH \
+		-k 100 \
+		--track "TRMMMYQ128F932D901:0.6" \
+		--track "TRMMMWA128F426B589:0.2" \
+		--track "TRMMMRX128F93187D9:0.2"
+	# song are:
+	# first: Faster pussycat - Silent Night
+	# second: Der Mystic - Tangle of Aspens
+	# third: Hudson Mohawke - No One Could Ever
 
 .PHONY: commit main extract mount_data_init fmt_json init_env

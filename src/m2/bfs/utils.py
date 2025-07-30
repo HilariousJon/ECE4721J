@@ -73,3 +73,4 @@ def calculate_distance(
     # score = cosine_similarity - l1_distance
     score = cosine_similarity
     return (score, song2_metadata)
+
