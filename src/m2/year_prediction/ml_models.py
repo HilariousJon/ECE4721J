@@ -232,7 +232,7 @@ def main():
     )
 
     try:
-        data = spark.read.csv(args.filepath, schema=schema)
+        data = spark.read.csv(f"file://{os.path.abspath(args.filepath)}", schema=schema)
     except Exception as e:
         print(f"Error: Could not find or read '{args.filepath}'.")
         print(f"Detailed error: {e}")
