@@ -267,7 +267,7 @@ train_ridge:
 		--model 1 \
 		--output ./experiment_results.csv \
 		--model-output-path ./model/ridge_model \
-		--tolerance 5.0
+		--tolerance 3.0
 
 # train_rf:
 # 	poetry run spark-submit \
@@ -289,7 +289,7 @@ train_gbt:
 		--model 3 \
 		--output ./experiment_results.csv \
 		--model-output-path ./model/gbt_model \
-		--tolerance 5.0
+		--tolerance 3.0
 
 train_lr:
 	poetry run spark-submit \
@@ -300,7 +300,7 @@ train_lr:
 		--model 4 \
 		--output ./experiment_results.csv \
 		--model-output-path ./model/sgd_model \
-		--tolerance 5.0
+		--tolerance 3.0
 
 train_xgboost:
 	poetry run spark-submit \
@@ -311,6 +311,6 @@ train_xgboost:
 		--model 5 \
 		--output ./experiment_results.csv \
 		--model-output-path ./model/xgb_model \
-		--tolerance 5.0
+		--tolerance 3.0
 
 .PHONY: commit extract mount_data_init fmt_json init_env
