@@ -310,7 +310,7 @@ def main():
     data_with_row_num = data.withColumn("row_num", row_number().over(window))
 
     total_count = data_with_row_num.count()
-    split_point = int(total_count * 0.9)
+    split_point = int(total_count * 0.8)
 
     training_data = data_with_row_num.where(col("row_num") <= split_point).drop(
         "row_num"
