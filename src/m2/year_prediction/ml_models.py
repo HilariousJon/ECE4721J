@@ -344,8 +344,8 @@ def main():
         rf = RandomForestRegressor(
             featuresCol="features",
             labelCol=LABEL_COL,
-            numTrees=100,
-            maxDepth=10,
+            numTrees=60,
+            maxDepth=7,
             seed=42,
         )
         run_model(
