@@ -291,7 +291,7 @@ train_gbt:
 		--model-output-path ./model/gbt_model \
 		--tolerance 5.0
 
-train_sgd:
+train_lr:
 	poetry run spark-submit \
 		--master local[*] \
 		src/m2/year_prediction/ml_models.py \
