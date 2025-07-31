@@ -7,10 +7,6 @@ OUTPUT_DIR ?= src/m1/output_h5
 DRILL_PATH ?= ~/mnt/drill
 
 
-
-main:
-	$(PYTHON) src/m1/compress.py 
-
 init_env:
 	# make sure you are in a virtual environment
 	pip install poetry
@@ -263,4 +259,4 @@ query_ann_LSH:
 	# second: Der Mystic - Tangle of Aspens
 	# third: Hudson Mohawke - No One Could Ever
 
-.PHONY: commit main extract mount_data_init fmt_json init_env
+.PHONY: commit extract mount_data_init fmt_json init_env
