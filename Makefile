@@ -35,7 +35,7 @@ aggregate_avro:
 		-o ./data/ \
 		-i /mnt/msd_data/data
 	python src/m1/merge_avro.py \
-		 ./data/ \
+		data/ \
 		aggregate.avro
 
 agg_avro:
@@ -141,6 +141,22 @@ commit:
 fmt_json:
 	cat src/m1/msd_meta.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_meta.avsc
 	cat src/m1/msd_year_prediction.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_year_prediction.avsc
+
+# TODO: remove absolute path in the makefile
+# remain bugs in the mini-batch-gd model
+
+train_%:
+	poetry run spark-submit \
+		--master local[1] \
+		--deploy-mode client \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		src/year_prediction/ml_models.py \
+		--model $(subst train_,,$@) \
+		--filepath $(CSV_PATH) \
+		--model_output $(MODEL_DIR)/$(subst train_,,$@)_model \
+		--output $(RESULTS_DIR) \
+		--tolerance 5.0
 
 run_drill:
 	sed 's|__PROJECT_PATH__|$(MAKEFILE_PATH)|g' src/m2/drill_queries.sql \
