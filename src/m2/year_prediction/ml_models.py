@@ -278,7 +278,7 @@ def main():
     # Spark Session Initialization
     spark = (
         SparkSession.builder.appName(f"YearPredictionML-{args.model}")
-        .config("spark.driver.memory", "4g")
+        .config("spark.driver.memory", "8g")
         .getOrCreate()
     )
     spark.sparkContext.setLogLevel("WARN")
