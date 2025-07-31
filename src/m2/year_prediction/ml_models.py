@@ -1,9 +1,11 @@
+import sys
 import argparse
 import time
-import datetime
 import os
-from pyspark.sql.window import Window
+import csv
+from datetime import datetime
 from pyspark.sql import SparkSession
+from pyspark.sql.window import Window
 from pyspark.sql.types import StructType, StructField, DoubleType
 from pyspark.sql.functions import (
     abs,
@@ -18,8 +20,6 @@ from pyspark.ml import Pipeline, PipelineModel
 from pyspark.ml.feature import VectorAssembler, StandardScaler
 from pyspark.ml.regression import LinearRegression, RandomForestRegressor, GBTRegressor
 from pyspark.ml.evaluation import RegressionEvaluator
-from pyspark.mllib.regression import LabeledPoint, LinearRegressionWithSGD
-from pyspark.mllib.linalg import Vectors
 from xgboost.spark import SparkXGBRegressor
 
 # The label column for prediction
@@ -63,7 +63,7 @@ def evaluate_and_print_metrics(
     print(f"Mean Absolute Error (MAE):  {mae:.4f}")
     print(f"Accuracy (+/- {tolerance} years): {accuracy:.2%}")
 
-    # Append the results to a CSV file if an output path is provided
+    # Append the results to a CSV file using standard Python I/O
     if output_path:
         print(f"Appending evaluation results to {output_path}...")
         try:
@@ -146,7 +146,6 @@ def run_model(
         return
 
     print("Making predictions...")
-    # predictions = model.transform(test_data)
     # Repartition the test data to prevent OOM on a single executor during transform
     spark = SparkSession.builder.getOrCreate()
     num_partitions = spark.sparkContext.defaultParallelism * 2
@@ -162,7 +161,6 @@ def main():
         description="Run regression on Year Prediction MSD dataset with Spark.",
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    # Execution Control
     parser.add_argument(
         "--mode",
         type=str,
@@ -177,13 +175,12 @@ def main():
         required=True,
         choices=[1, 2, 3, 4, 5],
         help="The number for the model to run:\n"
-        "  1: Ridge Regression\n"
+        "  1: Ridge Regression (Linear Regression with L2)\n"
         "  2: Random Forest\n"
         "  3: GBT (Gradient-Boosted Trees)\n"
-        "  4: Linear Regression (ML)\n"
+        "  4: Linear Regression (ML library)\n"
         "  5: XGBoost Regressor",
     )
-    # Path Arguments
     parser.add_argument(
         "-i",
         "--filepath",
@@ -208,7 +205,6 @@ def main():
         type=str,
         help="Path to load a pre-trained model from (for 'load' mode).",
     )
-    # Model Parameters
     parser.add_argument(
         "-t",
         "--tolerance",
@@ -219,15 +215,16 @@ def main():
 
     args = parser.parse_args()
 
-    # Spark Session Initialization
     spark = (
         SparkSession.builder.appName(f"YearPredictionML-{args.model}")
-        .config("spark.driver.memory", "8g")
+        .config("spark.driver.memory", "12g")
+        .config("spark.executor.memory", "12g")
+        .config("spark.executor.memoryOverhead", "4g")
         .getOrCreate()
     )
     spark.sparkContext.setLogLevel("WARN")
 
-    # Data Loading and Preparation
+    # data preparation
     feature_cols = [f"feature_{i}" for i in range(90)]
     schema = StructType(
         [StructField(LABEL_COL, DoubleType(), True)]
@@ -235,9 +232,7 @@ def main():
     )
 
     try:
-        data = spark.read.csv(
-            f"file://{os.path.abspath(args.filepath)}", schema=schema
-        ).withColumn("id", monotonically_increasing_id())
+        data = spark.read.csv(args.filepath, schema=schema)
     except Exception as e:
         print(f"Error: Could not find or read '{args.filepath}'.")
         print(f"Detailed error: {e}")
@@ -255,18 +250,16 @@ def main():
     )
     test_data = data_with_row_num.where(col("row_num") > split_point).drop("row_num")
 
-    # training_data.cache()
-    # test_data.cache()
     # Repartition the training data to distribute the load before caching and training
     num_partitions = spark.sparkContext.defaultParallelism * 4
     training_data = training_data.repartition(num_partitions).cache()
     test_data = test_data.cache()
+
     print(f"Data loading complete. Total records: {total_count}")
     print(
         f"Training set count: {training_data.count()}, Test set count: {test_data.count()}"
     )
 
-    # Preprocessing
     vector_assembler = VectorAssembler(
         inputCols=feature_cols, outputCol="unscaled_features"
     )
@@ -275,23 +268,29 @@ def main():
     )
     preprocessing_stages = [vector_assembler, scaler]
 
-    # Model Selection and Execution
     if args.model == 1:
-        lr = LinearRegression(
+        lr_ridge = LinearRegression(
             featuresCol="features",
             labelCol=LABEL_COL,
             regParam=0.1,
             elasticNetParam=0.0,
         )
         run_model(
-            "Ridge Regression", lr, training_data, test_data, preprocessing_stages, args
+            "Ridge Regression",
+            lr_ridge,
+            training_data,
+            test_data,
+            preprocessing_stages,
+            args,
         )
     elif args.model == 2:
+        # Optimized RandomForest to prevent memory errors.
         rf = RandomForestRegressor(
             featuresCol="features",
             labelCol=LABEL_COL,
             numTrees=50,
-            maxDepth=5,
+            maxDepth=8,
+            maxMemoryInMB=512,  # Limits memory used for collecting statistics
             seed=42,
         )
         run_model(
@@ -336,7 +335,6 @@ def main():
             args,
         )
 
-    # Cleanup
     training_data.unpersist()
     test_data.unpersist()
     spark.stop()
