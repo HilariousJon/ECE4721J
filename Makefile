@@ -269,16 +269,16 @@ train_ridge:
 		--model-output-path ./model/ridge_model \
 		--tolerance 5.0
 
-train_rf:
-	poetry run spark-submit \
-		--master local[*] \
-		src/m2/year_prediction/ml_models.py \
-		--mode train \
-		--filepath ./year-data/YearPredictionMSD.csv \
-		--model 2 \
-		--output ./experiment_results.csv \
-		--model-output-path ./model/rf_model \
-		--tolerance 5.0
+# train_rf:
+# 	poetry run spark-submit \
+# 		--master local[*] \
+# 		src/m2/year_prediction/ml_models.py \
+# 		--mode train \
+# 		--filepath ./year-data/YearPredictionMSD.csv \
+# 		--model 2 \
+# 		--output ./experiment_results.csv \
+# 		--model-output-path ./model/rf_model \
+# 		--tolerance 5.0
 
 train_gbt:
 	poetry run spark-submit \
