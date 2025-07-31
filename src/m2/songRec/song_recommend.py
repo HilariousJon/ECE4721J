@@ -8,9 +8,11 @@ from pyspark.sql.functions import col, udf
 from pyspark.sql.types import ArrayType, DoubleType
 from sklearn.metrics.pairwise import cosine_similarity
 
+
 def load_graph(spark, path):
     df = spark.read.parquet(path)
     return {row["song_id"]: set(row["neighbors"]) for row in df.collect()}
+
 
 def gen_bfs_score(graph, seeds, max_depth=3):
     score_map = defaultdict(float)
@@ -29,7 +31,10 @@ def gen_bfs_score(graph, seeds, max_depth=3):
                     queue.append((neighbor, depth + 1))
     return score_map
 
-def recommend(graph_path, feature_path, seed_ids, top_k=10, w_sim=0.5, w_hot=0.3, w_bfs=0.2):
+
+def recommend(
+    graph_path, feature_path, seed_ids, top_k=10, w_sim=0.5, w_hot=0.3, w_bfs=0.2
+):
     spark = SparkSession.builder.appName("SongGraphRecommendation").getOrCreate()
     start_time = time.time()
 
@@ -60,13 +65,23 @@ def recommend(graph_path, feature_path, seed_ids, top_k=10, w_sim=0.5, w_hot=0.3
 
     # Define feature columns
     feature_cols = [
-        "year", "duration", "loudness", "tempo", "energy", "danceability",
-        "key", "mode", "time_signature", "song_hotttnesss"
+        "year",
+        "duration",
+        "loudness",
+        "tempo",
+        "energy",
+        "danceability",
+        "key",
+        "mode",
+        "time_signature",
+        "song_hotttnesss",
     ] + [f"timbre_{i}" for i in range(12)]
 
     all_timbre_cols = [f"timbre_{i}" for i in range(90)]
 
-    df = df.select("artist_name", "song_id", "title", *feature_cols, *all_timbre_cols).dropna()
+    df = df.select(
+        "artist_name", "song_id", "title", *feature_cols, *all_timbre_cols
+    ).dropna()
 
     # Extract seed features
     seed_features = df.filter(col("song_id").isin(seed_ids)).collect()
@@ -98,7 +113,7 @@ def recommend(graph_path, feature_path, seed_ids, top_k=10, w_sim=0.5, w_hot=0.3
             "artist_name": row["artist_name"],
             "similarity": similarity,
             "hotttnesss": hotttness,
-            "bfs_score": bfs_val
+            "bfs_score": bfs_val,
         }
 
     sim_values = [s for _, s in similarities]
@@ -123,51 +138,73 @@ def recommend(graph_path, feature_path, seed_ids, top_k=10, w_sim=0.5, w_hot=0.3
         bfs_score = candidate_info[song_id]["bfs_score"]
 
         final_score = sim_norm * w_sim + hot_norm * w_hot + bfs_score * w_bfs
-        scored_candidates.append((
-            song_id,
-            candidate_info[song_id]["title"],
-            candidate_info[song_id]["artist_name"],
-            final_score
-        ))
+        scored_candidates.append(
+            (
+                song_id,
+                candidate_info[song_id]["title"],
+                candidate_info[song_id]["artist_name"],
+                final_score,
+            )
+        )
 
     top_recommendations = sorted(scored_candidates, key=lambda x: -x[3])[:top_k]
 
     print("\nInput Songs:")
-    input_df = df.filter(col("song_id").isin(seed_ids)) \
-      .select("song_id", "title", "artist_name") \
-      .distinct()
+    input_df = (
+        df.filter(col("song_id").isin(seed_ids))
+        .select("song_id", "title", "artist_name")
+        .distinct()
+    )
     input_df.show(truncate=False)
 
     print("\nTop Recommendations:")
-    rec_df = spark.createDataFrame([
-        {"song_id": sid, "title": title, "artist_name": artist, "score": score}
-        for sid, title, artist, score in top_recommendations
-    ])
+    rec_df = spark.createDataFrame(
+        [
+            {"song_id": sid, "title": title, "artist_name": artist, "score": score}
+            for sid, title, artist, score in top_recommendations
+        ]
+    )
     rec_df.select("song_id", "title", "artist_name", "score").show(truncate=False)
 
     # Compute and display similarity matrix (90-dim timbre)
     print("\nSimilarity Matrix (90-dim Timbre Features):")
-    seed_vecs90 = df.filter(col("song_id").isin(seed_ids)) \
-                  .select("song_id", *all_timbre_cols).rdd \
-                  .map(lambda row: (row["song_id"], np.array([row[f"timbre_{i}"] for i in range(90)]))) \
-                  .collect()
+    seed_vecs90 = (
+        df.filter(col("song_id").isin(seed_ids))
+        .select("song_id", *all_timbre_cols)
+        .rdd.map(
+            lambda row: (
+                row["song_id"],
+                np.array([row[f"timbre_{i}"] for i in range(90)]),
+            )
+        )
+        .collect()
+    )
 
-    rec_vecs90 = df.filter(col("song_id").isin([sid for sid, _, _, _ in top_recommendations])) \
-                  .select("song_id", *all_timbre_cols).rdd \
-                  .map(lambda row: (row["song_id"], np.array([row[f"timbre_{i}"] for i in range(90)]))) \
-                  .collect()
+    rec_vecs90 = (
+        df.filter(col("song_id").isin([sid for sid, _, _, _ in top_recommendations]))
+        .select("song_id", *all_timbre_cols)
+        .rdd.map(
+            lambda row: (
+                row["song_id"],
+                np.array([row[f"timbre_{i}"] for i in range(90)]),
+            )
+        )
+        .collect()
+    )
 
     # Build similarity matrix using 90-dim timbre vectors
     import pandas as pd
-    
+
     sim_matrix = pd.DataFrame(
-        index=[rec_id for rec_id, _ in rec_vecs90],      # rows: topk songs
-        columns=[seed_id for seed_id, _ in seed_vecs90]  # cols: input songs
+        index=[rec_id for rec_id, _ in rec_vecs90],  # rows: topk songs
+        columns=[seed_id for seed_id, _ in seed_vecs90],  # cols: input songs
     )
 
     for rec_id, rec_vec in rec_vecs90:
         for seed_id, seed_vec in seed_vecs90:
-            sim = float(cosine_similarity(seed_vec.reshape(1, -1), rec_vec.reshape(1, -1))[0][0])
+            sim = float(
+                cosine_similarity(seed_vec.reshape(1, -1), rec_vec.reshape(1, -1))[0][0]
+            )
             sim_matrix.at[rec_id, seed_id] = sim
 
     print("\nSimilarity Matrix (rows: topK songs, cols: input seeds):")
@@ -176,14 +213,27 @@ def recommend(graph_path, feature_path, seed_ids, top_k=10, w_sim=0.5, w_hot=0.3
     spark.stop()
     print(f"Total time: {time.time() - start_time:.2f}s")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Graph-based Song Recommendation")
-    parser.add_argument("-g", "--graph", required=True, help="Path to graph parquet file")
-    parser.add_argument("-f", "--features", required=True, help="Path to song features avro file")
-    parser.add_argument("-s", "--seeds", required=True, nargs="+", help="List of seed song IDs")
-    parser.add_argument("-k", "--topk", type=int, default=10, help="Number of recommendations")
-    parser.add_argument("--w_sim", type=float, default=0.5, help="Weight for cosine similarity")
-    parser.add_argument("--w_hot", type=float, default=0.3, help="Weight for song hotttnesss")
+    parser.add_argument(
+        "-g", "--graph", required=True, help="Path to graph parquet file"
+    )
+    parser.add_argument(
+        "-f", "--features", required=True, help="Path to song features avro file"
+    )
+    parser.add_argument(
+        "-s", "--seeds", required=True, nargs="+", help="List of seed song IDs"
+    )
+    parser.add_argument(
+        "-k", "--topk", type=int, default=10, help="Number of recommendations"
+    )
+    parser.add_argument(
+        "--w_sim", type=float, default=0.5, help="Weight for cosine similarity"
+    )
+    parser.add_argument(
+        "--w_hot", type=float, default=0.3, help="Weight for song hotttnesss"
+    )
     parser.add_argument("--w_bfs", type=float, default=0.2, help="Weight for BFS score")
     args = parser.parse_args()
 
@@ -194,5 +244,5 @@ if __name__ == "__main__":
         args.topk,
         args.w_sim,
         args.w_hot,
-        args.w_bfs
+        args.w_bfs,
     )

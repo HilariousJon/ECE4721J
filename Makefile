@@ -4,12 +4,7 @@ MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 AVRO_FILE ?= src/m1/songs.avro
 OUTPUT_DIR ?= src/m1/output_h5
-DRILL_PATH ?= ~/mnt/drill
 
-
-
-main:
-	$(PYTHON) src/m1/compress.py 
 
 init_env:
 	# make sure you are in a virtual environment
@@ -35,7 +30,7 @@ aggregate_avro:
 		-o ./data/ \
 		-i /mnt/msd_data/data
 	python src/m1/merge_avro.py \
-		 ./data/ \
+		data/ \
 		aggregate.avro
 
 agg_avro:
@@ -142,12 +137,28 @@ fmt_json:
 	cat src/m1/msd_meta.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_meta.avsc
 	cat src/m1/msd_year_prediction.avsc | jq '.' > tmp.avsc && mv tmp.avsc src/m1/msd_year_prediction.avsc
 
+# TODO: remove absolute path in the makefile
+# remain bugs in the mini-batch-gd model
+
+train_%:
+	poetry run spark-submit \
+		--master local[1] \
+		--deploy-mode client \
+		--conf spark.pyspark.driver.python=$(PYTHON) \
+		--conf spark.pyspark.python=$(PYTHON) \
+		src/year_prediction/ml_models.py \
+		--model $(subst train_,,$@) \
+		--filepath $(CSV_PATH) \
+		--model_output $(MODEL_DIR)/$(subst train_,,$@)_model \
+		--output $(RESULTS_DIR) \
+		--tolerance 5.0
+
 run_drill:
 	sed 's|__PROJECT_PATH__|$(MAKEFILE_PATH)|g' src/m2/drill_queries.sql \
 	| $(DRILL_HOME)/bin/drill-embedded -f /dev/stdin
 
 run_spark_bfs_local:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--master local[*] \
 		--deploy-mode client \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
@@ -165,7 +176,7 @@ run_spark_bfs_local:
 		-s TRMUOZE12903CDF721
 
 run_spark_bfs_cluster:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--master yarn \
 		--deploy-mode cluster \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
@@ -183,7 +194,7 @@ run_spark_bfs_cluster:
 		-s TRMUOZE12903CDF721
 
 run_mapreduce_setup:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--master local[*] \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/bfs/create_song_data.py \
@@ -200,13 +211,13 @@ run_mapreduce_setup:
 		./year-data/input_song_features.json
 
 run_mapreduce_bfs_local:
-	bash src/m2/bfs/driver_local.sh
+	time bash src/m2/bfs/driver_local.sh
 
 run_mapreduce_bfs_cluster:
-	bash src/m2/bfs/driver.sh
+	time bash src/m2/bfs/driver.sh
 
 run_ann_HNSW_build:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--master local[*] \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/ann/build_ann_HNSW_index.py \
@@ -214,7 +225,7 @@ run_ann_HNSW_build:
 		-o ./year-data/index_HNSW
 
 query_ann_HNSW:
-	poetry run $(PYTHON) src/m2/ann/query_HNSW_recommendation.py \
+	time poetry run $(PYTHON) src/m2/ann/query_HNSW_recommendation.py \
 		-i ./year-data/index_HNSW \
 		-k 100 \
 		--track "TRMMMYQ128F932D901:0.6" \
@@ -226,14 +237,14 @@ query_ann_HNSW:
 	# third: Hudson Mohawke - No One Could Ever
 
 run_ann_LSH_build:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/ann/build_ann_LSH_index.py \
 		-i ./year-data/aggregate_year_prediction.avro \
 		-o ./year-data/index_LSH
 
 query_ann_LSH:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/ann/query_LSH_recommendation.py \
 		--avro ./year-data/aggregate_year_prediction.avro \
@@ -247,4 +258,59 @@ query_ann_LSH:
 	# second: Der Mystic - Tangle of Aspens
 	# third: Hudson Mohawke - No One Could Ever
 
-.PHONY: commit main extract mount_data_init fmt_json init_env
+train_ridge:
+	poetry run spark-submit \
+		--master local[*] \
+		src/m2/year_prediction/ml_models.py \
+		--mode train \
+		--filepath ./year-data/YearPredictionMSD.csv \
+		--model 1 \
+		--output ./experiment_results.csv \
+		--model-output-path ./model/ridge_model \
+		--tolerance 10.0
+
+# train_rf:
+# 	poetry run spark-submit \
+# 		--master local[*] \
+# 		src/m2/year_prediction/ml_models.py \
+# 		--mode train \
+# 		--filepath ./year-data/YearPredictionMSD.csv \
+# 		--model 2 \
+# 		--output ./experiment_results.csv \
+# 		--model-output-path ./model/rf_model \
+# 		--tolerance 5.0
+
+train_gbt:
+	poetry run spark-submit \
+		--master local[*] \
+		src/m2/year_prediction/ml_models.py \
+		--mode train \
+		--filepath ./year-data/YearPredictionMSD.csv \
+		--model 3 \
+		--output ./experiment_results.csv \
+		--model-output-path ./model/gbt_model \
+		--tolerance 10.0
+
+train_lr:
+	poetry run spark-submit \
+		--master local[*] \
+		src/m2/year_prediction/ml_models.py \
+		--mode train \
+		--filepath ./year-data/YearPredictionMSD.csv \
+		--model 4 \
+		--output ./experiment_results.csv \
+		--model-output-path ./model/sgd_model \
+		--tolerance 10.0
+
+train_xgboost:
+	poetry run spark-submit \
+		--master local[*] \
+		src/m2/year_prediction/ml_models.py \
+		--mode train \
+		--filepath ./year-data/YearPredictionMSD.csv \
+		--model 5 \
+		--output ./experiment_results.csv \
+		--model-output-path ./model/xgb_model \
+		--tolerance 10.0
+
+.PHONY: commit extract mount_data_init fmt_json init_env
