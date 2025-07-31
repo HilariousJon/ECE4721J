@@ -15,31 +15,122 @@ make init_env
 
 ## Usage
 
-- Mount the data on the server every time you reset your computer:
+### 1. Data Management
+
+#### Mount dataset (run after computer reset)
+
 ```bash
 make mount_data_init
 ```
-- Unmount the data:
+
+#### Unmount when finished
 ```bash
 make unmount_data
 ```
 
-- Convert HDF5 files from the MSD into Avro format and save the output to the `./data/` directory:
+### 2. Data Conversion
+
+#### Convert HDF5 to Avro (Spark version)
+
 ```bash
 make aggregate_avro
 ```
 
-- Extract the HDF5 files from the Avro format file:
+#### Alternative non-Spark conversion
+
 ```bash
-make extract
+make agg_avro
 ```
 
-- Run the spark job to build the artists' distance graph:
+### Extract HDF5 from Avro
+
+```bash
+make extract AVRO_FILE=<path_to_avro_file> OUTPUT_DIR=<output_dir>
+```
+
+### 3. Graph Analysis
+
+#### Build artist similarity graph
+
 ```bash
 make build_artists_graph
 ```
 
-- Run the spark job to query the distance between two artists in the graph:
+#### Query distance between artists
+
 ```bash
 make query_artists_distance
+```
+
+#### Build song similarity graph
+
+```bash
+make build_songs_graph
+```
+
+### 4. Recommendation Systems
+
+#### Graph-based recommendations
+
+```bash
+make song_recommend
+```
+
+#### ANN-based recommendations (HNSW)
+
+```bash
+make run_ann_HNSW_build
+make query_ann_HNSW
+```
+
+#### ANN-based recommendations (LSH)
+
+```bash
+make run_ann_LSH_build
+make query_ann_LSH
+```
+
+### 5. Year Prediction
+
+#### Train models
+
+```bash
+make train_ridge  # Ridge Regression
+make train_gbt    # Gradient Boosted Trees
+make train_lr     # Linear Regression
+make train_xgboost # XGBoost
+```
+
+### 6. MapReduce BFS
+
+#### Local mode
+
+```bash
+make run_mapreduce_bfs_local
+```
+
+#### Cluster mode
+
+```bash
+make run_mapreduce_bfs_cluster
+```
+
+### 7. Drill Queries
+
+```bash
+make run_drill
+```
+
+### 8. Maintenance
+
+#### Format AVSC schema files
+
+```bash
+make fmt_json
+```
+
+#### Auto-commit changes
+
+```bash
+make commit
 ```

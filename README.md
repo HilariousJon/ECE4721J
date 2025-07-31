@@ -21,3 +21,32 @@ Team Members:
 - Reference: [MSongsDB](https://github.com/tbertinmahieux/MSongsDB)
 
 ## Milestone 2
+
+### Framework
+
+- Project configuration
+- Research documentation
+- Makefile automation
+
+### Avro
+
+- Schema refactoring
+
+### Drill
+
+- Song-specific queries
+- Code refactoring
+
+### Song Recommendation
+
+- Artist distance analysis
+- 3 approaches tested:
+    - Artist graph BFS
+    - Song similarity BFS
+    - ANN algorithms
+
+### Year Prediction
+
+- Regression methods
+- Classification approaches
+- Spark MLlib implementation
