@@ -1,6 +1,7 @@
 import argparse
 import time
 import os
+from pyspark.sql.window import Window
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, DoubleType
 from pyspark.sql.functions import (
@@ -10,6 +11,7 @@ from pyspark.sql.functions import (
     lit,
     current_timestamp,
     monotonically_increasing_id,
+    row_number,
 )
 from pyspark.ml import Pipeline, PipelineModel
 from pyspark.ml.feature import VectorAssembler, StandardScaler
@@ -291,21 +293,25 @@ def main():
     )
 
     try:
-        data = spark.read.csv(f"file://{os.path.abspath(args.filepath)}", schema=schema).withColumn(
-            "id", monotonically_increasing_id()
-        )
+        data = spark.read.csv(
+            f"file://{os.path.abspath(args.filepath)}", schema=schema
+        ).withColumn("id", monotonically_increasing_id())
     except Exception as e:
         print(f"Error: Could not find or read '{args.filepath}'.")
         print(f"Detailed error: {e}")
         spark.stop()
         return
 
-    # Chronological Data Split (80% train, 20% test)
-    total_count = data.count()
+    window = Window.orderBy(monotonically_increasing_id())
+    data_with_row_num = data.withColumn("row_num", row_number().over(window))
+
+    total_count = data_with_row_num.count()
     split_point = int(total_count * 0.9)
 
-    training_data = data.where(col("id") < split_point).drop("id")
-    test_data = data.where(col("id") >= split_point).drop("id")
+    training_data = data_with_row_num.where(col("row_num") <= split_point).drop(
+        "row_num"
+    )
+    test_data = data_with_row_num.where(col("row_num") > split_point).drop("row_num")
 
     training_data.cache()
     test_data.cache()
