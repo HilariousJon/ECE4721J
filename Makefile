@@ -158,7 +158,7 @@ run_drill:
 	| $(DRILL_HOME)/bin/drill-embedded -f /dev/stdin
 
 run_spark_bfs_local:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--master local[*] \
 		--deploy-mode client \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
