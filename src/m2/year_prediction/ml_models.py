@@ -97,7 +97,7 @@ def evaluate_and_print_metrics(
 
             # Append to the CSV file
             results_df.coalesce(1).write.mode("append").option("header", header).csv(
-                output_path
+                f"file://{os.path.abspath(output_path)}"
             )
 
             print("Results appended successfully.")
@@ -291,7 +291,7 @@ def main():
     )
 
     try:
-        data = spark.read.csv(args.filepath, schema=schema).withColumn(
+        data = spark.read.csv(f"file://{os.path.abspath(args.filepath)}", schema=schema).withColumn(
             "id", monotonically_increasing_id()
         )
     except Exception as e:
