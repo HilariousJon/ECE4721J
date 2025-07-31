@@ -36,10 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add the graph based on the principle components.
 - Add query of the distance between two artists.
 - Add PCA + linear regression to predict year.
-
-### Fixed
-
-- 
+- Add poster & slides think flow.
 
 ### Changed
 
@@ -49,8 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add PCA to reduce 1 dimension and crossjoin + Eucidean distance
-- Add LSH
+- Add PCA to reduce 1 dimension and crossjoin + Eucidean distance.
+- Add LSH to artist distance.
+- Add poster & slides images.
 
 ### Fixed
 
@@ -61,23 +59,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added random forest to predict year.
+- Add random forest to predict year.
+- Add gradient boosted tree.
 
 ### Fixed 
 
 - Fix drill query most popular song.
-- Fix bug
+- Fix artist distance bug.
 
 ### Changed
 
 - Change threshold to "close distance" and the adjacency is more reasonable from top-k.
+- Change linear regression 
 
 ### [0.1.5] - 2025-07-25
 
 ### Added
 
 - Add makefile.
+- Add workflow.
 
 ### Fixed
 
 - Add an option to remove songs from same artist while doing song prediction.
+
+### [0.1.6] - 2025-07-31
+
+### Added
+
+- Add poster & slides
+- Add MlLib spark year prediction
+- Add experiments results
