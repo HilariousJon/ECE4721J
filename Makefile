@@ -176,7 +176,7 @@ run_spark_bfs_local:
 		-s TRMUOZE12903CDF721
 
 run_spark_bfs_cluster:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--master yarn \
 		--deploy-mode cluster \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
@@ -194,7 +194,7 @@ run_spark_bfs_cluster:
 		-s TRMUOZE12903CDF721
 
 run_mapreduce_setup:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--master local[*] \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/bfs/create_song_data.py \
@@ -211,13 +211,13 @@ run_mapreduce_setup:
 		./year-data/input_song_features.json
 
 run_mapreduce_bfs_local:
-	bash src/m2/bfs/driver_local.sh
+	time bash src/m2/bfs/driver_local.sh
 
 run_mapreduce_bfs_cluster:
-	bash src/m2/bfs/driver.sh
+	time bash src/m2/bfs/driver.sh
 
 run_ann_HNSW_build:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--master local[*] \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/ann/build_ann_HNSW_index.py \
@@ -225,7 +225,7 @@ run_ann_HNSW_build:
 		-o ./year-data/index_HNSW
 
 query_ann_HNSW:
-	poetry run $(PYTHON) src/m2/ann/query_HNSW_recommendation.py \
+	time poetry run $(PYTHON) src/m2/ann/query_HNSW_recommendation.py \
 		-i ./year-data/index_HNSW \
 		-k 100 \
 		--track "TRMMMYQ128F932D901:0.6" \
@@ -237,14 +237,14 @@ query_ann_HNSW:
 	# third: Hudson Mohawke - No One Could Ever
 
 run_ann_LSH_build:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/ann/build_ann_LSH_index.py \
 		-i ./year-data/aggregate_year_prediction.avro \
 		-o ./year-data/index_LSH
 
 query_ann_LSH:
-	poetry run spark-submit \
+	time poetry run spark-submit \
 		--packages org.apache.spark:spark-avro_2.12:3.2.4 \
 		src/m2/ann/query_LSH_recommendation.py \
 		--avro ./year-data/aggregate_year_prediction.avro \
