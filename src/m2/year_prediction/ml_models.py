@@ -1,5 +1,6 @@
 import argparse
 import time
+import datetime
 import os
 from pyspark.sql.window import Window
 from pyspark.sql import SparkSession
@@ -66,41 +67,38 @@ def evaluate_and_print_metrics(
     if output_path:
         print(f"Appending evaluation results to {output_path}...")
         try:
-            # Create a Spark Session to handle the results DataFrame
-            spark = SparkSession.builder.getOrCreate()
+            # Check if the file exists to determine if we need to write a header
+            file_exists = os.path.isfile(output_path)
 
-            # Structure the results
-            result_data = [
-                (
-                    model_name,
-                    training_time,
-                    rmse,
-                    mae,
-                    accuracy,
-                    tolerance,
-                    str(current_timestamp()),
-                )
-            ]
-            result_schema = StructType(
-                [
-                    StructField("model_name", DoubleType(), True),
-                    StructField("training_time_seconds", DoubleType(), True),
-                    StructField("rmse", DoubleType(), True),
-                    StructField("mae", DoubleType(), True),
-                    StructField("accuracy", DoubleType(), True),
-                    StructField("tolerance_years", DoubleType(), True),
-                    StructField("timestamp", DoubleType(), True),
+            with open(output_path, mode="a", newline="") as csv_file:
+                # Define the header
+                header = [
+                    "model_name",
+                    "training_time_seconds",
+                    "rmse",
+                    "mae",
+                    "accuracy",
+                    "tolerance_years",
+                    "timestamp",
                 ]
-            )
-            results_df = spark.createDataFrame(data=result_data, schema=result_schema)
+                writer = csv.writer(csv_file)
 
-            # Check if the CSV file already exists to decide whether to write a header
-            header = "true" if not os.path.exists(output_path) else "false"
+                # Write header if the file is new
+                if not file_exists:
+                    writer.writerow(header)
 
-            # Append to the CSV file
-            results_df.coalesce(1).write.mode("append").option("header", header).csv(
-                f"file://{os.path.abspath(output_path)}"
-            )
+                # Prepare and write the data row
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                data_row = [
+                    model_name,
+                    f"{training_time:.2f}",
+                    f"{rmse:.4f}",
+                    f"{mae:.4f}",
+                    f"{accuracy:.4f}",
+                    tolerance,
+                    timestamp,
+                ]
+                writer.writerow(data_row)
 
             print("Results appended successfully.")
         except Exception as e:
@@ -135,7 +133,12 @@ def run_linear_regression_sgd(training_data, test_data, preproc_stages, args):
         start_time = time.time()
         # Train the model using SGD
         model = LinearRegressionWithSGD.train(
-            train_rdd, iterations=100, step=0.01, miniBatchFraction=0.1
+            train_rdd,
+            iterations=100,
+            step=0.01,
+            miniBatchFraction=0.1,
+            regParam=0.1,
+            intercept=True,
         )
         training_time = time.time() - start_time
 
@@ -284,7 +287,7 @@ def main():
     # Spark Session Initialization
     spark = (
         SparkSession.builder.appName(f"YearPredictionML-{args.model}")
-        .config("spark.driver.memory", "10g")
+        .config("spark.driver.memory", "8g")
         .getOrCreate()
     )
     spark.sparkContext.setLogLevel("WARN")
@@ -310,7 +313,7 @@ def main():
     data_with_row_num = data.withColumn("row_num", row_number().over(window))
 
     total_count = data_with_row_num.count()
-    split_point = int(total_count * 0.8)
+    split_point = int(total_count * 0.9)
 
     training_data = data_with_row_num.where(col("row_num") <= split_point).drop(
         "row_num"
