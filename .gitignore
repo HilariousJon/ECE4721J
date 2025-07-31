@@ -39,4 +39,6 @@
 !**/Makefile
 !**/CMakeLists.txt
 !**/*.md
-
+!**/*.tex
+!**/*.bib
+!**/*.sty
