@@ -302,7 +302,7 @@ def main():
 
     # Chronological Data Split (80% train, 20% test)
     total_count = data.count()
-    split_point = int(total_count * 0.8)
+    split_point = int(total_count * 0.9)
 
     training_data = data.where(col("id") < split_point).drop("id")
     test_data = data.where(col("id") >= split_point).drop("id")
