@@ -208,7 +208,11 @@ def run_model(
         return
 
     print("Making predictions...")
-    predictions = model.transform(test_data)
+    # predictions = model.transform(test_data)
+    # Repartition the test data to prevent OOM on a single executor during transform
+    spark = SparkSession.builder.getOrCreate()
+    num_partitions = spark.sparkContext.defaultParallelism * 2
+    predictions = model.transform(test_data.repartition(num_partitions))
 
     evaluate_and_print_metrics(
         model_name_str, predictions, training_time, args.output, args.tolerance
@@ -313,8 +317,12 @@ def main():
     )
     test_data = data_with_row_num.where(col("row_num") > split_point).drop("row_num")
 
-    training_data.cache()
-    test_data.cache()
+    # training_data.cache()
+    # test_data.cache()
+    # Repartition the training data to distribute the load before caching and training
+    num_partitions = spark.sparkContext.defaultParallelism * 4
+    training_data = training_data.repartition(num_partitions).cache()
+    test_data = test_data.cache()
     print(f"Data loading complete. Total records: {total_count}")
     print(
         f"Training set count: {training_data.count()}, Test set count: {test_data.count()}"
