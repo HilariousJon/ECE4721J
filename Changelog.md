@@ -78,6 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add makefile.
 - Add workflow.
+- Add song recommendation bfs artist graph
+- Add song recommendation bfs song similarity graph
+- Add song recommendation ANN algorithms, graph based or tree based
 
 ### Fixed
 
