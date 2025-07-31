@@ -4,7 +4,6 @@ MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 AVRO_FILE ?= src/m1/songs.avro
 OUTPUT_DIR ?= src/m1/output_h5
-DRILL_PATH ?= ~/mnt/drill
 
 
 init_env:
