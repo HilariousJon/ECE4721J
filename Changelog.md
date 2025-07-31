@@ -55,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix drill query search for the earliest song year and the latest song year.
 - Fix drill query find the name of the band who record the longest song.
 
-### [0.1.4] - 2025-07-21
+## [0.1.4] - 2025-07-21
 
 ### Added
 
@@ -72,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Change threshold to "close distance" and the adjacency is more reasonable from top-k.
 - Change linear regression 
 
-### [0.1.5] - 2025-07-25
+## [0.1.5] - 2025-07-25
 
 ### Added
 
@@ -86,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add an option to remove songs from same artist while doing song prediction.
 
-### [0.1.6] - 2025-07-31
+## [0.1.6] - 2025-07-31
 
 ### Added
 
