@@ -3,7 +3,13 @@ import time
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, collect_list, expr, sha2, concat_ws, udf
 from pyspark.sql.types import ArrayType, DoubleType
-from pyspark.ml.feature import VectorAssembler, StandardScaler, PCA, BucketedRandomProjectionLSH
+from pyspark.ml.feature import (
+    VectorAssembler,
+    StandardScaler,
+    PCA,
+    BucketedRandomProjectionLSH,
+)
+
 
 def build_song_graph(input_path, output_path, distance_threshold):
     spark = SparkSession.builder.appName("SongGraphWithLSH").getOrCreate()
@@ -13,11 +19,38 @@ def build_song_graph(input_path, output_path, distance_threshold):
 
     # Load and clean
     song_df = (
-        spark.read.format("avro").load(input_path)
-        .select("song_id", "year", "duration", "loudness", "tempo", "energy", "danceability",
-                "key", "mode", "time_signature", "song_hotttnesss", "segments_timbre")
-        .dropna(subset=["song_id", "year", "duration", "loudness", "tempo", "energy", "danceability",
-                        "key", "mode", "time_signature", "song_hotttnesss", "segments_timbre"])
+        spark.read.format("avro")
+        .load(input_path)
+        .select(
+            "song_id",
+            "year",
+            "duration",
+            "loudness",
+            "tempo",
+            "energy",
+            "danceability",
+            "key",
+            "mode",
+            "time_signature",
+            "song_hotttnesss",
+            "segments_timbre",
+        )
+        .dropna(
+            subset=[
+                "song_id",
+                "year",
+                "duration",
+                "loudness",
+                "tempo",
+                "energy",
+                "danceability",
+                "key",
+                "mode",
+                "time_signature",
+                "song_hotttnesss",
+                "segments_timbre",
+            ]
+        )
         .dropDuplicates(["song_id"])
     )
 
@@ -36,14 +69,26 @@ def build_song_graph(input_path, output_path, distance_threshold):
         song_df = song_df.withColumn(f"timbre_{i}", col("flat_timbre").getItem(i))
 
     # Assemble features
-    feature_cols = ["year", "duration", "loudness", "tempo", "energy", "danceability"
-                    , "key", "mode", "time_signature", "song_hotttnesss"] + [f"timbre_{i}" for i in range(12)]
+    feature_cols = [
+        "year",
+        "duration",
+        "loudness",
+        "tempo",
+        "energy",
+        "danceability",
+        "key",
+        "mode",
+        "time_signature",
+        "song_hotttnesss",
+    ] + [f"timbre_{i}" for i in range(12)]
 
     assembler = VectorAssembler(inputCols=feature_cols, outputCol="features")
     features_df = assembler.transform(song_df)
 
     # Standardize
-    scaler = StandardScaler(inputCol="features", outputCol="scaled_features", withStd=True, withMean=True)
+    scaler = StandardScaler(
+        inputCol="features", outputCol="scaled_features", withStd=True, withMean=True
+    )
     scaled_df = scaler.fit(features_df).transform(features_df)
 
     # LSH
@@ -52,16 +97,20 @@ def build_song_graph(input_path, output_path, distance_threshold):
         inputCol="scaled_features",
         outputCol="hashes",
         bucketLength=1.0,
-        numHashTables=3
+        numHashTables=3,
     )
     lsh_model = lsh.fit(scaled_df)
     lsh_df = lsh_model.transform(scaled_df)
 
     # Add bucket ID: use sha256 hash of hash vector
-    lsh_df = lsh_df.withColumn("bucket_id", sha2(expr("CAST(hashes[0] AS STRING)"), 256))
+    lsh_df = lsh_df.withColumn(
+        "bucket_id", sha2(expr("CAST(hashes[0] AS STRING)"), 256)
+    )
 
     # Get all unique bucket ids
-    bucket_ids = [row["bucket_id"] for row in lsh_df.select("bucket_id").distinct().collect()]
+    bucket_ids = [
+        row["bucket_id"] for row in lsh_df.select("bucket_id").distinct().collect()
+    ]
 
     # Perform per-bucket self-join
     print(f"Performing self-join in {len(bucket_ids)} buckets...")
@@ -75,7 +124,7 @@ def build_song_graph(input_path, output_path, distance_threshold):
             datasetA=bucket_df,
             datasetB=bucket_df,
             threshold=distance_threshold,
-            distCol="distance"
+            distCol="distance",
         ).filter(col("datasetA.song_id") != col("datasetB.song_id"))
 
         all_pairs.append(joined)
@@ -85,13 +134,19 @@ def build_song_graph(input_path, output_path, distance_threshold):
         for p in all_pairs[1:]:
             filtered = filtered.union(p)
     else:
-        filtered = spark.createDataFrame([], lsh_model.approxSimilarityJoin(lsh_df, lsh_df, 1.0, "distance").schema)
+        filtered = spark.createDataFrame(
+            [], lsh_model.approxSimilarityJoin(lsh_df, lsh_df, 1.0, "distance").schema
+        )
 
     # Build adjacency list
-    edges = filtered.select(
-        col("datasetA.song_id").cast("string").alias("song_id"),
-        col("datasetB.song_id").cast("string").alias("neighbor_id")
-    ).groupBy("song_id").agg(collect_list("neighbor_id").alias("neighbors"))
+    edges = (
+        filtered.select(
+            col("datasetA.song_id").cast("string").alias("song_id"),
+            col("datasetB.song_id").cast("string").alias("neighbor_id"),
+        )
+        .groupBy("song_id")
+        .agg(collect_list("neighbor_id").alias("neighbors"))
+    )
 
     # Write output
     print("Writing output...")
