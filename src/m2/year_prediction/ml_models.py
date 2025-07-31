@@ -107,71 +107,6 @@ def evaluate_and_print_metrics(
             )
 
 
-def run_linear_regression_sgd(training_data, test_data, preproc_stages, args):
-    """Trains and evaluates a Linear Regression model with Mini-Batch SGD."""
-    print("\n--- Training Linear Regression with Mini-Batch SGD (MLLib) ---")
-
-    # MLLib requires RDD of LabeledPoint, so we need to preprocess and transform
-    pipeline = Pipeline(stages=preproc_stages)
-    preproc_model = pipeline.fit(training_data)
-
-    train_rdd = (
-        preproc_model.transform(training_data)
-        .select(LABEL_COL, "features")
-        .rdd.map(lambda row: LabeledPoint(row[LABEL_COL], Vectors.dense(row.features)))
-    )
-    train_rdd.cache()
-
-    test_rdd = (
-        preproc_model.transform(test_data)
-        .select(LABEL_COL, "features")
-        .rdd.map(lambda row: LabeledPoint(row[LABEL_COL], Vectors.dense(row.features)))
-    )
-
-    training_time = 0
-    if args.mode == "train":
-        start_time = time.time()
-        # Train the model using SGD
-        model = LinearRegressionWithSGD.train(
-            train_rdd,
-            iterations=100,
-            step=0.01,
-            miniBatchFraction=0.1,
-            regParam=0.1,
-            intercept=True,
-        )
-        training_time = time.time() - start_time
-
-        if args.model_output_path:
-            print(f"Saving model to {args.model_output_path}...")
-            # MLLib models have a different save mechanism
-            print(
-                "Warning: Standard model saving not supported for MLLib's LinearRegressionWithSGD."
-            )
-            print("To re-run, you will need to retrain the model.")
-
-    else:  # Load mode
-        print(
-            "Error: Load mode is not supported for MLLib's LinearRegressionWithSGD in this script."
-        )
-        return
-
-    # Make predictions
-    predictions_rdd = test_rdd.map(
-        lambda lp: (float(model.predict(lp.features)), lp.label)
-    )
-    predictions_df = predictions_rdd.toDF(["prediction", LABEL_COL])
-
-    evaluate_and_print_metrics(
-        "Linear Regression (SGD)",
-        predictions_df,
-        training_time,
-        args.output,
-        args.tolerance,
-    )
-    train_rdd.unpersist()
-
-
 def run_model(
     model_name_str, model_obj, training_data, test_data, preproc_stages, args
 ):
@@ -245,7 +180,7 @@ def main():
         "  1: Ridge Regression\n"
         "  2: Random Forest\n"
         "  3: GBT (Gradient-Boosted Trees)\n"
-        "  4: Mini-Batch Gradient Descent (MLLib)\n"
+        "  4: Linear Regression (ML)\n"
         "  5: XGBoost Regressor",
     )
     # Path Arguments
@@ -375,7 +310,15 @@ def main():
             args,
         )
     elif args.model == 4:
-        run_linear_regression_sgd(training_data, test_data, preprocessing_stages, args)
+        lr_std = LinearRegression(featuresCol="features", labelCol=LABEL_COL)
+        run_model(
+            "Linear Regression (ML)",
+            lr_std,
+            training_data,
+            test_data,
+            preprocessing_stages,
+            args,
+        )
     elif args.model == 5:
         xgb = SparkXGBRegressor(
             features_col="features",
