@@ -4,12 +4,7 @@ MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 AVRO_FILE ?= src/m1/songs.avro
 OUTPUT_DIR ?= src/m1/output_h5
-DRILL_PATH ?= ~/mnt/drill
 
-
-
-main:
-	$(PYTHON) src/m1/compress.py 
 
 init_env:
 	# make sure you are in a virtual environment
@@ -263,4 +258,59 @@ query_ann_LSH:
 	# second: Der Mystic - Tangle of Aspens
 	# third: Hudson Mohawke - No One Could Ever
 
-.PHONY: commit main extract mount_data_init fmt_json init_env
+train_ridge:
+	poetry run spark-submit \
+		--master local[*] \
+		src/m2/year_prediction/ml_models.py \
+		--mode train \
+		--filepath ./year-data/YearPredictionMSD.csv \
+		--model 1 \
+		--output ./experiment_results.csv \
+		--model-output-path ./model/ridge_model \
+		--tolerance 10.0
+
+# train_rf:
+# 	poetry run spark-submit \
+# 		--master local[*] \
+# 		src/m2/year_prediction/ml_models.py \
+# 		--mode train \
+# 		--filepath ./year-data/YearPredictionMSD.csv \
+# 		--model 2 \
+# 		--output ./experiment_results.csv \
+# 		--model-output-path ./model/rf_model \
+# 		--tolerance 5.0
+
+train_gbt:
+	poetry run spark-submit \
+		--master local[*] \
+		src/m2/year_prediction/ml_models.py \
+		--mode train \
+		--filepath ./year-data/YearPredictionMSD.csv \
+		--model 3 \
+		--output ./experiment_results.csv \
+		--model-output-path ./model/gbt_model \
+		--tolerance 10.0
+
+train_lr:
+	poetry run spark-submit \
+		--master local[*] \
+		src/m2/year_prediction/ml_models.py \
+		--mode train \
+		--filepath ./year-data/YearPredictionMSD.csv \
+		--model 4 \
+		--output ./experiment_results.csv \
+		--model-output-path ./model/sgd_model \
+		--tolerance 10.0
+
+train_xgboost:
+	poetry run spark-submit \
+		--master local[*] \
+		src/m2/year_prediction/ml_models.py \
+		--mode train \
+		--filepath ./year-data/YearPredictionMSD.csv \
+		--model 5 \
+		--output ./experiment_results.csv \
+		--model-output-path ./model/xgb_model \
+		--tolerance 10.0
+
+.PHONY: commit extract mount_data_init fmt_json init_env

@@ -34,7 +34,7 @@ def build_ann_index_final(
     CWD = os.getcwd()
     intermediate_path = os.path.join(CWD, "processed_vectors.parquet")
     logger.info(f"Using absolute path for intermediate data: {intermediate_path}")
-    # --- 1. Spark Session Initialization with a more conservative driver memory ---
+    # Spark Session Initialization with a more conservative driver memory
     logger.info("[Step 1/5] Initializing Spark Session...")
     spark = (
         SparkSession.builder.appName(app_name)
@@ -103,7 +103,7 @@ def build_ann_index_final(
     )
     logger.success("Feature engineering complete.")
 
-    # --- 4. Save to Parquet (Memory Conservative) ---
+    # Save to Parquet (Memory Conservative)
     logger.info("[Step 4/5] Saving processed vectors to Parquet format...")
     vectorized_df.write.mode("overwrite").parquet(f"file://{intermediate_path}")
     spark.stop()
@@ -111,7 +111,7 @@ def build_ann_index_final(
         f"Spark processing finished. Intermediate data saved to '{intermediate_path}'."
     )
 
-    # --- 5. Build Faiss Index in Batches ---
+    # Build Faiss Index in Batches
     logger.info("[Step 5/5] Building Faiss index from Parquet files...")
     index_file = f"{output_prefix}_index.ann"
     id_map_file = f"{output_prefix}_id_map.pkl"

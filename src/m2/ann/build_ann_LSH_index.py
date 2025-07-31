@@ -30,7 +30,7 @@ def build_lsh_model(
 ):
     logger.info("--- Starting Fully Parallel Spark LSH Model Building Pipeline ---")
 
-    # --- 1. Spark Session Initialization ---
+    # Spark Session Initialization
     logger.info("[Step 1/3] Initializing Spark Session...")
     spark = (
         SparkSession.builder.appName(app_name)
@@ -43,7 +43,7 @@ def build_lsh_model(
     )
     logger.success("Spark Session created.")
 
-    # --- 2. Data Loading & Feature Engineering (Parallel) ---
+    # Data Loading & Feature Engineering (Parallel)
     logger.info(
         f"[Step 2/3] Loading Avro data and performing feature engineering in parallel..."
     )
@@ -104,7 +104,7 @@ def build_lsh_model(
         f"Feature engineering pipeline defined. Total songs to process: {vectorized_df.count()}"
     )
 
-    # --- 3. Build and Save LSH Model (Fully Parallel) ---
+    # Build and Save LSH Model (Fully Parallel)
     logger.info("[Step 3/3] Building and saving the Spark LSH model in parallel...")
 
     # Configure the LSH model.
