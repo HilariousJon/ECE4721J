@@ -1,0 +1,22 @@
+{
+  "fields": [
+    {
+      "name": "filename",
+      "type": "string",
+      "doc": "The name of the file"
+    },
+    {
+      "name": "filecontent",
+      "type": "bytes",
+      "doc": "The binary content of the file"
+    },
+    {
+      "name": "checksum",
+      "type": "string",
+      "doc": "SHA-1 checksum of the file"
+    }
+  ],
+  "type": "record",
+  "name": "AvroFileRecord",
+  "namespace": "avro"
+}
