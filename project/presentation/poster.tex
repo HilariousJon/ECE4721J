@@ -1,0 +1,372 @@
+\PassOptionsToPackage{pdfpagelabels=false}{hyperref}
+
+\documentclass{beamer} 
+\usepackage{ragged2e}
+
+\usepackage{sfocs-poster}
+\usepackage{fontspec}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,fit,calc,arrows.meta}
+\usepackage{pifont}
+\usepackage{xcolor}
+\usepackage{amssymb} % 用于 \star 符号
+\usepackage{pgf}
+\usepackage{minted}
+\usemintedstyle{perldoc}
+\usepackage{lipsum} 
+\usepackage{enumerate}
+\usepackage{hyperref}
+\usepackage{shapepar}
+\usetikzlibrary{arrows.meta}
+
+\definecolor{aquamarineDark}{HTML}{013220}
+\definecolor{aquamarineMid}{HTML}{45B39D}
+\definecolor{aquamarineAccent}{HTML}{16A085}
+\definecolor{aquamarineLight}{HTML}{A3E4D7}
+\definecolor{aquamarineGrey}{HTML}{708090} 
+
+\usetikzlibrary{
+    shapes.geometric,  
+    arrows.meta,        
+    positioning,       
+    fit,               
+    backgrounds         
+}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, calc}
+\tikzset{
+    process/.style={
+        draw, 
+        rectangle, 
+        rounded corners,
+        fill=blue!15, 
+        minimum height=3em, 
+        text width=7em, 
+        align=center
+    },
+    data/.style={
+        draw, 
+        rectangle, 
+        fill=green!15,
+        minimum height=3em,
+        text width=6em, 
+        align=center
+    },
+    io/.style={
+        draw,
+        trapezium, % 梯形
+        trapezium left angle=70, 
+        trapezium right angle=110,
+        fill=purple!15,
+        minimum height=3em,
+        text width=8em, 
+        align=center
+    },
+    result/.style={
+        draw,
+        rectangle,
+        fill=orange!20,
+        text width=8em,
+        align=center,
+        minimum height=8em
+    },
+    annotation/.style={
+        text width=10em, 
+        align=left
+    },
+    container/.style={
+        draw,
+        dashed,
+        inner sep=0.5cm,
+        rounded corners
+    },
+    arrow/.style={
+        -{{Stealth[length=3mm, width=2mm]}},
+        thick
+    }
+}
+
+\usebackgroundtemplate{%
+	\begin{tikzpicture}[remember picture,overlay] 
+		% set a background color
+		% \fill[top color=black!75, bottom color=black] (current page.north west) rectangle (current page.south east); 
+		% image as background
+		\node[inner sep=0pt,outer sep=0pt] at (current page.center) {\includegraphics[height=\paperheight,width=\paperwidth,keepaspectratio]{poster/assets/poster bg.pdf}}; % background done
+	\end{tikzpicture}
+}
+
+\newfontfamily\comic[Path=./assets/]{comic.ttf}
+% \newfontfamily\comic{Comic Sans MS}
+
+% an octagonal box
+\newtcolorbox{octobox}[1][]{nobeforeafter, size=minimal,auto outer arc,octogon arc, halign=center,valign=center, square,arc is angular,#1}
+
+
+% draw a grid: helpful to ensure elements are perfectly aligned
+%\beamertemplategridbackground[1cm]
+
+\begin{document}
+
+\begin{textblock}{35}[0.5,0.5](52,18)
+    \begin{basebox}[frame hidden, interior hidden, halign=center, valign=center]
+        \centering
+        \textcolor{orange}{\VERYHuge \textbf{Drill Into Sound}}\\[0.3cm]
+        % \textcolor{white}{\VERYHuge \textbf{Minimum Time}}\\
+        
+        \vspace{1.5cm}
+        
+        \begin{minipage}{0.85\linewidth}
+            \centering
+            \textcolor{white}{\Large Our platform offers hundreds of song recommendations based on user preferences, even from multiple songs, in sub-10-second execution time.}
+            
+            \vspace{1cm}
+            
+            \textcolor{white}{\Large \textbf{We offer:}}
+            
+            \vspace{0.5cm}
+            
+            \textcolor{white}{
+                \Large\textbf{Blazing-Fast Song Recommendations}\\[0.6cm]
+                \textbf{Real-Time Process Visualization}\\
+                [0.6cm]
+                \textbf{Cluster speed with single computer}\\[0.6cm]
+                \textbf{Latest Technology Integration}
+            }
+        \end{minipage}
+        
+        \vspace{2cm}
+        
+    \end{basebox}
+\end{textblock}
+
+\begin{textblock}{30}[0.5,0.5](85,60)
+  \begin{basebox}[frame hidden, interior hidden, halign=center, valign=center]
+    \raggedleft
+    \color{white}
+    \vspace{1.5cm}
+
+    \begin{minipage}{0.85\linewidth}
+      \raggedleft
+      {\textcolor{orange}{\Huge \textbf{Avro Extraction}}}\\[0.5cm]
+
+      \vspace{0.5cm}
+
+      {\large \textbf{Avro} extract necessary data fields, thus significantly decreasing memory usage.}\\[0.6em]
+      {\Large \textbf{Raw size: 288GB} \LARGE\textcolor{pink}{\textbf{Avro size: 884MB}}}\\[0.4em]
+      {\Large \textbf{Non-parallel:} 5h30min \textbf{Parallel(10 cores):} 1h20min}\\[0.4em]
+      
+      {\textcolor{orange}{\Huge \textbf{Drill Empowers Searching}}}\\[0.5cm]
+
+      \vspace{0.5cm}
+
+      {\large \textbf{Apache Drill} enables lightning-fast queries over millions of songs in seconds.}\\[0.6em]
+      {\textcolor{pink}{\Large \textbf{DRILL}} \large through data - query deeper, discover faster!}\\[0.4em]
+      {\normalsize
+          \textbf{Scalable:} Seamless cluster support for heavy queries.\\
+          \textbf{Efficient:} Drill delivers accurate songs in the blink of an eye.
+      }
+
+      \vspace{1cm}
+
+      {\textcolor{orange}{\Huge \textbf{YearMark}}}\\[-0.1cm]
+
+      {\large What if a single melody could unlock forgotten memories? What if someone could predict the exact era of a song? \\ Not by metadata, but by its very soul!}\\[0.5em]
+      {\large YearMark predicts a song's release year with over \textbf{80\%} accuracy within \(\pm10\) years.}\\[0.8em]
+      {\large Drop the \Large \textcolor{pink}{\textbf{BEAT!}} \large We'll drop the \Large \textcolor{pink}{\textbf{YEAR!}}}\\[0.8em]
+      {\large\textbf{Model}}\\
+      {\normalsize
+          \textbf{Input:} The timbre reflects the soul of a song.\\
+          \textbf{Linear Regression:} The simplest but not accurate.\\
+          \textbf{Gradient Boosted Tree:} Slowest but accurate.\\
+          \textbf{XGBoost:} Extremely faster and more accurate.\\
+      }
+    \end{minipage}
+
+    \vspace{2cm}
+  \end{basebox}
+\end{textblock}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pictures down below
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{textblock}{20}(11.5,50.5)
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\linewidth]{poster/artist_graph.png}
+\end{figure}
+    
+\end{textblock}
+
+\begin{textblock}{20}(-2.2,68)
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\linewidth]{poster/build_graph.png}
+\end{figure}
+    
+\end{textblock}
+
+\begin{textblock}{20}(-2.2,79)
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\linewidth]{poster/song_graph.png}
+\end{figure}
+    
+\end{textblock}
+
+\begin{textblock}{20}(40, 65)
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{poster/ann.png}
+\end{figure}
+    
+\end{textblock}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Title for song recommendation
+
+\begin{textblock}{30}(1.1,42)
+  \begin{basebox}[frame hidden, interior hidden, halign=center, valign=center]
+    \color{white}
+
+    \begin{minipage}{0.85\linewidth}
+        \textcolor{orange}{\Huge\textbf{Song Recommendation}}
+    \end{minipage}
+
+    \vspace{2cm}
+  \end{basebox}
+\end{textblock}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% IDEA1: Textblock
+
+\begin{textblock}{16}(-0.9,48)
+  \begin{basebox}[frame hidden, interior hidden, halign=center, valign=center]
+    \color{white}
+
+    \begin{minipage}{0.85\linewidth}
+        \raggedleft
+        {\textcolor{orange}{\LARGE\textbf{BFS on artist graph}}} \\[0.8cm]
+        
+        {\Large Artists tend to hang out in the same musical neighborhood.} \\[0.8cm]
+        
+        {\Large Why not \textbf{BFS} through their friend group?} \\[0.8cm] 
+        
+        {\textcolor{pink}{\LARGE\textbf{PySpark}} \Large(9.7s) wins \LARGE \textcolor{pink}{\textbf{MapReduce}}\Large(18.5s)!}
+    \end{minipage}
+
+    \vspace{2cm}
+  \end{basebox}
+\end{textblock}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% IDEA2: Textblock
+
+\begin{textblock}{18}(13,69.5)
+  \begin{basebox}[frame hidden, interior hidden, halign=center, valign=center]
+    \color{white}
+
+    \begin{minipage}{0.85\linewidth}
+    % \raggedleft
+        {\textcolor{orange}{\LARGE\textbf{Recommendation on Song Similarity Graph}}} \\[0.1cm]
+        
+        {\Large Songs that sound alike probably vibe alike.} \\[0.1cm]
+        
+        {\Large Build a song similarity graph and hop around.} \\[0.1cm]
+        
+        {\Large Scoring based on \textcolor{pink}{\LARGE\textbf{3D scores} \Large and \LARGE\textbf{custom weights}!}}
+    \end{minipage}
+
+    \vspace{2cm}
+  \end{basebox}
+\end{textblock}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% IDEA3: Textblock
+
+\begin{textblock}{20}(40,46)
+  \begin{basebox}[frame hidden, interior hidden, halign=center, valign=center,colupper=white]
+
+    \begin{minipage}{0.85\linewidth}
+    % \raggedleft
+      {\textcolor{orange}{\LARGE \textbf{ANN algorithm}}}\\[0.1cm]
+      
+      {Nobody wants to wait \LARGE\textbf{30 seconds} for a song recommendation!}\\[0.1cm]
+      
+      {\textbf{HNSW} model: query \textcolor{pink}{\LARGE\textbf{0.9974}} similarity song in \textcolor{pink}{\LARGE\textbf{1.85s}}}\\ [0.1cm]
+
+      {\textbf{LSH} model: query \textcolor{pink}{\LARGE\textbf{0.9665}} \\similarity song in \textcolor{pink}{\LARGE\textbf{22.612s}}}
+      
+    \end{minipage}
+
+    \vspace{2cm}
+  \end{basebox}
+\end{textblock}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%
+% poster content arranged in boxes
+%
+
+\tcbset{frogbox/.style={enhanced,colback=green!10,colframe=green!65!black,
+		enlarge top by=5.5mm,
+		overlay={\foreach \x in {2.5cm,5cm} {
+				\begin{scope}[shift={([xshift=\x]frame.north west)}]
+				\path[draw=green!65!black,fill=green!10,line width=2mm] (0,0) arc (0:180:1cm);
+				\path[fill=black] (-0.2,0) arc (0:180:3mm);
+\end{scope}}}}}
+
+%
+% extra content (logos, dev comments, acknowledgements, etc.)
+%
+
+\begin{textblock}{22.75}[1,0](105,0)
+	\logos[light]\qquad\includegraphics[height=4cm]{poster/assets/drill_bullet.PNG}
+\end{textblock}
+
+\newcommand{\printAuthor}[1]{{\em #1}}
+\begin{textblock}{40}[1,1](112,100)
+	\begin{tcbraster}[raster equal height,raster column skip=0cm,raster columns=2,raster rows=2, raster row skip=0.5cm]
+	\begin{blankbox}[fontupper=\LARGE,colupper=white]
+        \printAuthor{Aghamatlab Akbarzade}
+        \end{blankbox}
+	\begin{blankbox}[fontupper=\LARGE,colupper=white]
+            \printAuthor{Li Yanzhi}
+        \end{blankbox}
+	\begin{blankbox}[fontupper=\LARGE,colupper=white]
+            \printAuthor{Zhang Lingwei}
+        \end{blankbox}
+        \begin{blankbox}[fontupper=\LARGE,colupper=white]
+            \printAuthor{Zuo Tianyou}
+        \end{blankbox}
+	\end{tcbraster}
+\end{textblock}
+
+\begin{textblock}{45}[0,1](0,100)
+	\begin{blankbox}[fontupper=\LARGE,colupper=white]
+		Developed in Avro, Drill, Spark, Powered by Gitea, and Engineered by Team02 % process
+	\end{blankbox}
+\end{textblock}
+
+%
+% QR code
+%
+
+\begin{textblock}{12}[0.5, 0.5](29.3, 31)
+\centering
+{\Huge \textcolor{orange}{\textbf{Scan to play songs instantly!}}}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{img/QR.png}
+\end{figure}
+\end{textblock}
+
+\end{document}
+
+
